@@ -1,0 +1,38 @@
+{# Partial: KPI strip for dashboard — rendered server-side and swapped by HTMX #}
+{# Expected context: pending, printing, completed, failed (integers) #}
+
+<div class="kpi-card">
+  <div class="kpi-label">Pending</div>
+  <div class="kpi-value text-sec">{{ pending | default('--') }}</div>
+  <div class="kpi-pulse">
+    <span class="dot"></span>
+    <span style="font-size:11px;color:var(--text-mut);">waiting</span>
+  </div>
+</div>
+
+<div class="kpi-card">
+  <div class="kpi-label">Printing</div>
+  <div class="kpi-value text-primary">{{ printing | default('--') }}</div>
+  <div class="kpi-pulse">
+    <span class="dot busy"></span>
+    <span style="font-size:11px;color:var(--text-mut);">active</span>
+  </div>
+</div>
+
+<div class="kpi-card">
+  <div class="kpi-label">Completed</div>
+  <div class="kpi-value text-success">{{ completed | default('--') }}</div>
+  <div class="kpi-pulse">
+    <span class="dot online"></span>
+    <span style="font-size:11px;color:var(--text-mut);">today</span>
+  </div>
+</div>
+
+<div class="kpi-card">
+  <div class="kpi-label">Failed</div>
+  <div class="kpi-value text-danger">{{ failed | default('--') }}</div>
+  <div class="kpi-pulse">
+    <span class="dot error"></span>
+    <span style="font-size:11px;color:var(--text-mut);">today</span>
+  </div>
+</div>

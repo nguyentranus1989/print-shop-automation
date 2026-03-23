@@ -5,7 +5,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -13,6 +17,9 @@ from dashboard.db.database import get_db
 from dashboard.db.models import InkUsage, Job
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
+
+_TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
+_templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 
 # --- Helper -----------------------------------------------------------
@@ -54,6 +61,19 @@ def analytics_summary(db: Session = Depends(get_db)) -> dict[str, Any]:
 
 
 router.add_api_route("/summary", analytics_summary, methods=["GET"])
+
+
+@router.get("/kpi-strip", response_class=HTMLResponse)
+def kpi_strip(request: Request, db: Session = Depends(get_db)):
+    """Returns server-rendered KPI strip HTML partial for HTMX swap."""
+    stats = analytics_summary(db)
+    printing = db.query(func.count(Job.id)).filter(Job.status == "printing").scalar() or 0
+    return _templates.TemplateResponse(
+        request=request,
+        name="partials/kpi-strip.html",
+        context={"pending": stats["pending_in_queue"], "printing": printing,
+                 "completed": stats["completed_today"], "failed": stats["failed_today"]},
+    )
 
 
 def analytics_throughput(

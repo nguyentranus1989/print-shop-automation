@@ -46,21 +46,11 @@
 
 <!-- ── Mobile: card list ─────────────────────────────────────── -->
 <div class="job-cards" id="job-cards-mobile">
-  {% for i in range(6) %}
-  <div class="job-card">
-    <div class="job-card-header">
-      <div>
-        <div class="job-name" style="color:var(--border-hi);">Loading...</div>
-        <div class="job-order">—</div>
-      </div>
-      <span class="badge badge-gray">—</span>
-    </div>
-    <div class="job-card-meta">
-      <i data-lucide="cpu"></i>
-      <span>—</span>
-    </div>
+  <div class="empty-state" style="padding:32px 24px;">
+    <i data-lucide="inbox" style="width:36px;height:36px;color:var(--text-mut);"></i>
+    <div class="empty-state-title">No jobs in queue</div>
+    <div class="empty-state-sub">Add a print job to get started</div>
   </div>
-  {% endfor %}
 </div>
 
 <!-- ── Desktop: table ────────────────────────────────────────── -->
@@ -82,26 +72,16 @@
            hx-get="/api/jobs"
            hx-trigger="load, every 5s"
            hx-swap="innerHTML">
-      {% for i in range(6) %}
+      <!-- HTMX loads rows here; initial state shows empty -->
       <tr>
-        <td class="text-mut">{{ loop.index }}</td>
-        <td><span class="design-swatch"></span></td>
-        <td><span class="order-id" style="opacity:0.3;">—</span></td>
-        <td style="color:var(--border-hi);">—</td>
-        <td><span class="badge badge-gray">—</span></td>
-        <td style="color:var(--border-hi);">—</td>
-        <td class="progress-cell">
-          <div class="progress-wrap"><div class="progress-bar blue" style="width:0%"></div></div>
-        </td>
-        <td>
-          <div class="actions-cell">
-            <button class="btn btn-ghost btn-icon" disabled><i data-lucide="play"></i></button>
-            <button class="btn btn-ghost btn-icon" disabled><i data-lucide="pause"></i></button>
-            <button class="btn btn-ghost btn-icon" disabled><i data-lucide="trash-2"></i></button>
+        <td colspan="8" style="padding:0;">
+          <div class="empty-state" style="padding:40px 24px;">
+            <i data-lucide="inbox" style="width:36px;height:36px;color:var(--text-mut);"></i>
+            <div class="empty-state-title">No jobs in queue</div>
+            <div class="empty-state-sub">Add a print job to get started</div>
           </div>
         </td>
       </tr>
-      {% endfor %}
     </tbody>
   </table>
   <div class="table-footer">

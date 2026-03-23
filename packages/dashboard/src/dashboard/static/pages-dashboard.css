@@ -1,0 +1,181 @@
+/*
+ * PrintFlow — Dashboard page
+ * KPI strip, printer cards, printer scroll, ink bars
+ */
+
+/* ── KPI cards ──────────────────────────────────────────────────── */
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpi-value {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+@media (min-width: 768px) { .kpi-value { font-size: 36px; } }
+
+.kpi-label {
+  font-size: 11px;
+  color: var(--text-sec);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+
+.kpi-pulse { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+
+/* ── Printer cards scroll strip ─────────────────────────────────── */
+.printer-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 8px;
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.printer-scroll::-webkit-scrollbar { height: 3px; }
+
+@media (min-width: 768px) {
+  .printer-scroll {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    overflow: visible;
+    scroll-snap-type: none;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.printer-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: 16px;
+  flex-shrink: 0;
+  width: 280px;
+  scroll-snap-align: start;
+  transition: border-color 0.2s;
+}
+
+.printer-card:hover { border-color: var(--border-hi); }
+
+@media (min-width: 768px) {
+  .printer-card { width: auto; flex-shrink: unset; }
+}
+
+.printer-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.printer-name {
+  font-family: var(--font-head);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.printer-status-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.printer-job-name   { font-size: 12px; color: var(--text-sec); }
+
+/* ── Printer card progress ──────────────────────────────────────── */
+.printer-progress { margin-bottom: 12px; }
+
+.printer-progress-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.printer-progress-label { font-size: 11px; color: var(--text-sec); }
+
+.printer-progress-pct {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.pass-info { font-family: var(--font-mono); font-size: 11px; color: var(--text-mut); margin-top: 5px; }
+
+/* ── Ink bars ───────────────────────────────────────────────────── */
+.ink-section { margin-top: 12px; display: flex; flex-direction: column; gap: 5px; }
+
+.ink-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-mut);
+  margin-bottom: 4px;
+}
+
+.ink-row { display: flex; align-items: center; gap: 8px; }
+
+.ink-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-mut);
+  width: 12px;
+  flex-shrink: 0;
+}
+
+.ink-track {
+  flex: 1;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ink-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.ink-fill.cyan    { background: #06b6d4; }
+.ink-fill.magenta { background: #ec4899; }
+.ink-fill.yellow  { background: #eab308; }
+.ink-fill.black   { background: #a1a1aa; }
+.ink-fill.white   { background: #f4f4f5; }
+
+.ink-pct {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-sec);
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Printer footer ─────────────────────────────────────────────── */
+.printer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.queue-depth { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-sec); }
+.queue-depth svg { width: 13px; height: 13px; color: var(--text-mut); }

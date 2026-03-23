@@ -1,0 +1,177 @@
+/*
+ * PrintFlow — Analytics page
+ * Time range bar, KPI cards, chart grid, sparkline bars, donut, ink consumption
+ */
+
+/* ── Time range bar ─────────────────────────────────────────────── */
+.time-range-bar {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+@media (min-width: 768px) { .time-range-bar { width: fit-content; } }
+
+.range-btn {
+  flex: 1;
+  height: 36px;
+  border-radius: 7px;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-sec);
+  background: transparent;
+  cursor: pointer;
+  transition: var(--transition);
+  padding: 0 18px;
+}
+
+.range-btn.active { background: var(--primary); color: #fff; }
+.range-btn:hover:not(.active) { background: var(--elevated); color: var(--text); }
+
+@media (min-width: 768px) { .range-btn { flex: none; } }
+
+/* ── Analytics KPI values ───────────────────────────────────────── */
+.analytics-kpi-value {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.analytics-kpi-unit  { font-size: 14px; color: var(--text-sec); margin-left: 2px; }
+.analytics-kpi-label { font-size: 12px; color: var(--text-sec); margin-top: 6px; }
+
+.delta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.delta-badge svg { width: 10px; height: 10px; }
+.delta-up   { background: var(--success-bg); color: var(--success); }
+.delta-down { background: var(--danger-bg);  color: var(--danger); }
+
+/* ── Chart grid ─────────────────────────────────────────────────── */
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+@media (min-width: 768px) { .chart-grid { grid-template-columns: 1fr 1fr; gap: 16px; } }
+
+.chart-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: 20px;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-title { font-family: var(--font-head); font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.chart-sub   { font-size: 11px; color: var(--text-mut); margin-bottom: 14px; }
+
+/* ── Chart placeholder with subtle grid lines ───────────────────── */
+.chart-placeholder {
+  flex: 1;
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--text-mut);
+  font-size: 12px;
+  background: var(--bg);
+}
+
+/* Grid lines background */
+.chart-placeholder::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 40px 30px;
+  opacity: 0.5;
+}
+
+.chart-placeholder > * { position: relative; z-index: 1; }
+.chart-placeholder svg { width: 22px; height: 22px; opacity: 0.4; }
+
+/* ── Sparkline bars ─────────────────────────────────────────────── */
+.spark-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 80px;
+  margin-top: 8px;
+  flex: 1;
+}
+
+.spark-bar {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  background: var(--primary);
+  opacity: 0.65;
+  min-height: 4px;
+  transition: opacity 0.15s;
+}
+
+.spark-bar:hover { opacity: 1; }
+
+/* ── Donut mock ─────────────────────────────────────────────────── */
+.donut-mock {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: conic-gradient(var(--primary) 0% 68%, var(--elevated) 68% 100%);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.donut-hole {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ── Ink consumption bars ───────────────────────────────────────── */
+.ink-consumption-bars { display: flex; flex-direction: column; gap: 8px; flex: 1; justify-content: center; }
+
+.ink-cons-row   { display: flex; align-items: center; gap: 10px; }
+.ink-cons-label { font-size: 11px; color: var(--text-sec); width: 32px; font-family: var(--font-mono); }
+.ink-cons-track { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.ink-cons-fill  { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+.ink-cons-val   { font-size: 11px; color: var(--text-mut); width: 42px; text-align: right; font-family: var(--font-mono); }

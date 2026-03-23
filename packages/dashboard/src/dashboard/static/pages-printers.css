@@ -1,0 +1,184 @@
+/*
+ * PrintFlow — Printer Control page
+ * Tabs, control grid, d-pad, step selector, position readout, actions
+ */
+
+/* ── Printer selector tabs ──────────────────────────────────────── */
+.printer-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+@media (min-width: 768px) { .printer-tabs { width: fit-content; } }
+
+.printer-tab {
+  flex: 1;
+  padding: 0 16px;
+  height: 38px;
+  border-radius: 7px;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-sec);
+  background: transparent;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.printer-tab.active { background: var(--primary); color: #fff; }
+.printer-tab:hover:not(.active) { background: var(--elevated); color: var(--text); }
+
+@media (min-width: 768px) { .printer-tab { flex: none; } }
+
+/* ── Control grid ───────────────────────────────────────────────── */
+.control-grid { display: flex; flex-direction: column; gap: 16px; }
+
+@media (min-width: 768px) {
+  .control-grid { flex-direction: row; gap: 20px; }
+  .control-grid > .card { flex: 1; }
+}
+
+/* ── Connection status banner ───────────────────────────────────── */
+.conn-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.conn-banner.connected    { background: var(--success-bg); color: var(--success); }
+.conn-banner.disconnected { background: var(--danger-bg);  color: var(--danger); }
+.conn-banner svg          { width: 14px; height: 14px; flex-shrink: 0; }
+
+/* ── D-pad ──────────────────────────────────────────────────────── */
+.dpad-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  gap: 6px;
+  width: 100%;
+  max-width: 220px;
+  margin: 0 auto;
+}
+
+.dpad-btn {
+  aspect-ratio: 1;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-sec);
+  transition: var(--transition);
+  min-height: 64px;
+}
+
+.dpad-btn:hover   { background: var(--primary); color: #fff; border-color: var(--primary); }
+.dpad-btn:active  { transform: scale(0.91); }
+.dpad-btn svg     { width: 24px; height: 24px; }
+.dpad-center      { background: var(--surface); cursor: default; }
+.dpad-center:hover { background: var(--surface); color: var(--text-sec); border-color: var(--border); }
+.dpad-empty       { background: transparent; border-color: transparent; cursor: default; }
+.dpad-empty:hover { background: transparent; border-color: transparent; }
+
+@media (min-width: 768px) {
+  .dpad-wrap { grid-template-columns: 64px 64px 64px; grid-template-rows: 64px 64px 64px; width: fit-content; }
+  .dpad-btn  { min-height: unset; width: 64px; height: 64px; }
+}
+
+/* ── Step size (radio style) ────────────────────────────────────── */
+.step-selector {
+  display: flex;
+  gap: 4px;
+  margin-top: 16px;
+  justify-content: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.step-btn {
+  flex: 1;
+  max-width: 72px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-sec);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+/* Only the active state gets a fill — radio-style */
+.step-btn.active { background: var(--primary); color: #fff; }
+.step-btn:hover:not(.active) { color: var(--text); background: var(--elevated); }
+
+/* ── Home + Z buttons ───────────────────────────────────────────── */
+.home-btns, .z-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  justify-content: center;
+}
+
+/* ── Position readout ───────────────────────────────────────────── */
+.pos-readout {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+
+.pos-axis { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.pos-axis:last-child { margin-bottom: 0; }
+.axis-label { font-size: 12px; color: var(--text-mut); width: 14px; font-weight: 600; }
+.axis-value { font-family: var(--font-mono); font-size: 28px; font-weight: 500; color: var(--text); letter-spacing: -0.02em; }
+.axis-unit  { font-size: 13px; color: var(--text-sec); }
+
+/* ── Connection status (inline, below actions) ──────────────────── */
+.conn-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-sec);
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Action grid ────────────────────────────────────────────────── */
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+/* Print is full-width and taller — more prominent */
+.action-grid .btn-print {
+  grid-column: 1 / -1;
+  min-height: 56px;
+  font-size: 15px;
+}
+
+.action-grid .btn { min-height: 52px; }
+
+.maintenance-row { display: flex; flex-wrap: wrap; gap: 8px; }

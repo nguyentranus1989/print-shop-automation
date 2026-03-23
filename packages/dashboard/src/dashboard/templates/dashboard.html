@@ -7,11 +7,11 @@
 <!-- ── KPI Strip ─────────────────────────────────────────────── -->
 <div class="grid-kpi"
      id="kpi-strip"
-     hx-get="/api/analytics/summary"
+     hx-get="/api/analytics/kpi-strip"
      hx-trigger="load, every 10s"
-     hx-swap="none"
-     hx-on::after-request="updateKpis(event)">
+     hx-swap="innerHTML">
 
+  <!-- Initial skeleton shown before first HTMX swap -->
   <div class="kpi-card">
     <div class="kpi-label">Pending</div>
     <div class="kpi-value text-sec" id="kpi-pending">--</div>
@@ -140,85 +140,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-function updateKpis(evt) {
-  try {
-    var d = JSON.parse(evt.detail.xhr.responseText);
-    ['pending', 'printing', 'completed', 'defects'].forEach(function(k) {
-      var el = document.getElementById('kpi-' + k);
-      if (el && d[k] !== undefined) el.textContent = d[k];
-    });
-  } catch(e) {}
-}
-
-/* ── Add Printer modal ─────────────────────────────────────── */
-function openAddPrinterModal() {
-  document.getElementById('add-printer-modal').style.display = 'flex';
-  document.getElementById('ap-test-result').textContent = '';
-  document.getElementById('add-printer-form').reset();
-  lucide.createIcons();
-}
-
-function closeAddPrinterModal(evt) {
-  if (!evt || evt.target === document.getElementById('add-printer-modal')) {
-    document.getElementById('add-printer-modal').style.display = 'none';
-  }
-}
-
-function testConnection() {
-  var url = document.getElementById('ap-url').value.trim();
-  var hint = document.getElementById('ap-test-result');
-  if (!url) { hint.textContent = 'Enter an agent URL first.'; hint.style.color = 'var(--text-mut)'; return; }
-  hint.textContent = 'Testing…'; hint.style.color = 'var(--text-mut)';
-
-  fetch(url.replace(/\/$/, '') + '/health', {method: 'GET'})
-    .then(function(r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
-    .then(function(d) {
-      hint.textContent = 'Connected — ' + (d.printer_name || '') + ' (' + (d.printer_type || '?').toUpperCase() + ')';
-      hint.style.color = 'var(--color-success, #22c55e)';
-      if (d.printer_type) document.getElementById('ap-type').value = d.printer_type;
-    })
-    .catch(function() {
-      hint.textContent = 'Could not reach agent. Check the URL.';
-      hint.style.color = 'var(--color-danger, #ef4444)';
-    });
-}
-
-function submitAddPrinter(evt) {
-  evt.preventDefault();
-  var btn = document.getElementById('ap-submit');
-  btn.disabled = true;
-  var hint = document.getElementById('ap-test-result');
-  hint.textContent = 'Registering…'; hint.style.color = 'var(--text-mut)';
-
-  var payload = {
-    name: document.getElementById('ap-name').value.trim(),
-    agent_url: document.getElementById('ap-url').value.trim(),
-    printer_type: document.getElementById('ap-type').value,
-  };
-
-  fetch('/api/printers', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(payload),
-  })
-  .then(function(r) {
-    if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || 'Error'); });
-    return r.json();
-  })
-  .then(function() {
-    closeAddPrinterModal();
-    // Trigger immediate refresh of printer cards
-    htmx.trigger('#printer-cards', 'load');
-  })
-  .catch(function(e) {
-    hint.textContent = e.message;
-    hint.style.color = 'var(--color-danger, #ef4444)';
-    btn.disabled = false;
-  });
-}
-</script>
+<script src="/static/dashboard-modal.js"></script>
 {% endblock %}

@@ -1,0 +1,161 @@
+/*
+ * PrintFlow — Jobs page
+ * Toolbar, filter pills, mobile cards, desktop table, modal
+ */
+
+/* ── Toolbar ────────────────────────────────────────────────────── */
+.jobs-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.jobs-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: 0 14px;
+  height: 48px;
+}
+
+.jobs-search-row svg { color: var(--text-mut); width: 16px; height: 16px; flex-shrink: 0; }
+
+.jobs-search-row .input {
+  background: transparent;
+  border: none;
+  height: 100%;
+  padding: 0;
+  font-size: 14px;
+  box-shadow: none;
+}
+
+.jobs-search-row .input:focus { box-shadow: none; }
+
+/* ── Filter pills ───────────────────────────────────────────────── */
+.filter-pills {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.filter-pills::-webkit-scrollbar { display: none; }
+
+.filter-pill {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-sec);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.filter-pill:active { transform: scale(0.96); }
+.filter-pill.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+@media (min-width: 768px) {
+  .jobs-toolbar { flex-direction: row; align-items: center; }
+  .jobs-search-row { flex: 1; max-width: 360px; height: 40px; }
+  .jobs-search-row .input { font-size: 13px; }
+  .filter-pills { gap: 4px; }
+}
+
+/* ── Job cards (mobile) ─────────────────────────────────────────── */
+.job-cards { display: flex; flex-direction: column; gap: 10px; }
+
+.job-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: 14px 16px;
+  transition: border-color 0.15s;
+}
+
+.job-card:hover { border-color: var(--border-hi); }
+
+.job-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.job-name {
+  font-family: var(--font-head);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.job-order { font-family: var(--font-mono); font-size: 11px; color: var(--text-sec); margin-top: 2px; }
+
+.job-card-meta { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-sec); }
+.job-card-meta svg { width: 13px; height: 13px; }
+
+/* ── Desktop table ──────────────────────────────────────────────── */
+.table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+
+.jobs-table { width: 100%; border-collapse: collapse; }
+
+.jobs-table th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-mut);
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.jobs-table td {
+  padding: 0 14px;
+  height: 52px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.jobs-table tbody tr:last-child td { border-bottom: none; }
+.jobs-table tbody tr:hover td { background: var(--elevated); }
+
+.table-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-mut);
+}
+
+.order-id        { font-family: var(--font-mono); font-size: 12px; color: var(--text-sec); }
+.design-swatch   { width: 30px; height: 30px; border-radius: 6px; display: inline-block; background: var(--elevated); }
+.progress-cell .progress-wrap { height: 4px; min-width: 60px; }
+.actions-cell    { display: flex; align-items: center; gap: 4px; }
+
+/* Mobile hides table, desktop hides cards */
+.job-cards  { display: flex; }
+.table-wrap { display: none; }
+
+@media (min-width: 768px) {
+  .job-cards  { display: none; }
+  .table-wrap { display: block; }
+}

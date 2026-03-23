@@ -1,0 +1,101 @@
+/*
+ * PrintFlow — Utilities
+ * Utility classes, grids, section headers, empty state
+ */
+
+/* ── Text helpers ───────────────────────────────────────────────── */
+.mono         { font-family: var(--font-mono); }
+.text-sec     { color: var(--text-sec); }
+.text-mut     { color: var(--text-mut); }
+.text-success { color: var(--success); }
+.text-danger  { color: var(--danger); }
+.text-warning { color: var(--warning); }
+.text-primary { color: var(--primary); }
+
+/* ── Flex ───────────────────────────────────────────────────────── */
+.flex         { display: flex; }
+.flex-center  { display: flex; align-items: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-col     { display: flex; flex-direction: column; }
+
+/* ── Gaps ───────────────────────────────────────────────────────── */
+.gap-4  { gap: 4px; }  .gap-6  { gap: 6px; }
+.gap-8  { gap: 8px; }  .gap-12 { gap: 12px; }
+.gap-16 { gap: 16px; } .gap-24 { gap: 24px; }
+
+/* ── Margins ────────────────────────────────────────────────────── */
+.mt-4  { margin-top: 4px; }  .mt-8  { margin-top: 8px; }
+.mt-12 { margin-top: 12px; } .mt-16 { margin-top: 16px; }
+.mt-20 { margin-top: 20px; } .mt-24 { margin-top: 24px; }
+.mb-16 { margin-bottom: 16px; }
+
+/* ── Section header ─────────────────────────────────────────────── */
+.section-title {
+  font-family: var(--font-head);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.section-divider {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-mut);
+  margin: 14px 0 10px;
+}
+
+.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+/* ── Grids ──────────────────────────────────────────────────────── */
+/* KPI 2-up on mobile, 4-up on desktop */
+.grid-kpi {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .grid-kpi { grid-template-columns: repeat(4, 1fr); gap: 16px; }
+}
+
+.grid-2 { display: grid; grid-template-columns: 1fr; gap: 12px; }
+
+@media (min-width: 768px) {
+  .grid-2 { grid-template-columns: 1fr 1fr; gap: 16px; }
+}
+
+.grid-3 { display: grid; grid-template-columns: 1fr; gap: 12px; }
+
+@media (min-width: 768px) {
+  .grid-3 { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+}
+
+/* ── Empty state ────────────────────────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  gap: 12px;
+  text-align: center;
+  color: var(--text-mut);
+}
+
+.empty-state-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-sec);
+  font-family: var(--font-head);
+}
+
+.empty-state-sub { font-size: 13px; color: var(--text-mut); }

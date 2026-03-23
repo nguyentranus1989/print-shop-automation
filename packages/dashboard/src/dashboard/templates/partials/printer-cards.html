@@ -1,14 +1,21 @@
 {% if not printers %}
 <!-- Empty state -->
-<div class="empty-state">
+<div class="empty-state" style="width:100%;">
   <i data-lucide="printer" style="width:48px;height:48px;color:var(--text-mut);"></i>
   <div class="empty-state-title">No printers registered</div>
-  <div class="empty-state-sub">Click <strong>Add Printer</strong> to get started</div>
+  <div class="empty-state-sub">Add your first printer to get started</div>
+  <button class="btn btn-primary mt-8" onclick="openAddPrinterModal()">
+    <i data-lucide="plus"></i> Add Printer
+  </button>
 </div>
+
 {% else %}
 {% for p in printers %}
 {% set dot_cls = 'busy' if p.printing else ('online' if p.connected else 'error') %}
 {% set badge_cls = 'blue' if p.printer_type == 'dtg' else ('green' if p.printer_type == 'dtf' else 'yellow') %}
+{% set bar_cls = 'blue' if dot_cls == 'busy' else ('green' if dot_cls == 'online' else 'red') %}
+{% set pct = p.progress | default(0) | round | int %}
+
 <div class="printer-card">
 
   <div class="printer-card-header">
@@ -24,25 +31,29 @@
     <span class="badge badge-{{ badge_cls }}">{{ p.printer_type | upper }}</span>
   </div>
 
-  {% set pct = 0 %}
   <div class="printer-progress">
     <div class="printer-progress-header">
       <span class="printer-progress-label">Progress</span>
-      <span class="printer-progress-pct">{{ pct }}%</span>
+      <span class="printer-progress-pct mono">{{ pct }}%</span>
     </div>
     <div class="progress-wrap">
-      <div class="progress-bar {{ 'blue' if dot_cls == 'busy' else ('green' if dot_cls == 'online' else 'error') }}"
-           style="width:{{ pct }}%"></div>
+      <div class="progress-bar {{ bar_cls }}" style="width:{{ pct }}%"></div>
     </div>
   </div>
 
   <div class="ink-section">
-    <div class="ink-section-label">Ink</div>
+    <div class="ink-section-label">Ink Levels</div>
     {% set levels = p.ink_levels %}
-    {% for channel, css_cls in [('cyan','cyan'),('magenta','magenta'),('yellow','yellow'),('black','black'),('white','white')] %}
+    {% for channel, css_cls, label in [
+        ('cyan',    'cyan',    'C'),
+        ('magenta', 'magenta', 'M'),
+        ('yellow',  'yellow',  'Y'),
+        ('black',   'black',   'K'),
+        ('white',   'white',   'W')
+    ] %}
     {% set val = levels.get(channel, 0) | round | int %}
     <div class="ink-row">
-      <div class="ink-label">{{ channel[0] | upper }}</div>
+      <div class="ink-label">{{ label }}</div>
       <div class="ink-track"><div class="ink-fill {{ css_cls }}" style="width:{{ val }}%"></div></div>
       <div class="ink-pct">{{ val }}%</div>
     </div>
@@ -54,7 +65,9 @@
       <i data-lucide="layers"></i>
       <span>{{ p.printer_type | upper }}</span>
     </div>
-    <span class="dot {{ dot_cls }}"></span>
+    <a href="/printers" class="btn btn-ghost" style="min-height:32px;padding:0 12px;font-size:12px;">
+      <i data-lucide="sliders-horizontal"></i> View
+    </a>
   </div>
 
 </div>
