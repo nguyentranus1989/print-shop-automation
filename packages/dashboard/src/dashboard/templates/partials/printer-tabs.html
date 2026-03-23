@@ -1,0 +1,13 @@
+{% for p in printers %}
+<button class="printer-tab {% if loop.first %}active{% endif %}"
+        data-printer-id="{{ p.id }}"
+        data-printer-type="{{ p.printer_type }}"
+        onclick="selectPrinterTab({{ p.id }}, '{{ p.printer_type }}', this)">
+  {{ p.name }}
+</button>
+{% endfor %}
+{% if not printers %}
+<span style="color:var(--text-mut);font-size:13px;padding:8px;">
+  No printers registered — add one first
+</span>
+{% endif %}

@@ -1,19 +1,180 @@
 {% extends "base.html" %}
 {% block title %}Job Queue — PrintFlow{% endblock %}
+{% block page_title %}Job Queue{% endblock %}
+
 {% block content %}
-<h1>Job Queue</h1>
 
-<section>
-  <button hx-get="/jobs/new" hx-target="#modal" hx-swap="innerHTML">New Job</button>
-  <div id="modal"></div>
-</section>
+<!-- ── Toolbar ───────────────────────────────────────────────── -->
+<div class="jobs-toolbar">
 
-<section>
-  <div id="job-list"
-       hx-get="/api/jobs"
-       hx-trigger="load, every 5s"
-       hx-swap="innerHTML">
-    <p aria-busy="true">Loading jobs...</p>
+  <!-- Search -->
+  <div class="jobs-search-row">
+    <i data-lucide="search"></i>
+    <input
+      type="search"
+      class="input"
+      id="job-search"
+      placeholder="Search order or design..."
+      name="q"
+      hx-get="/api/jobs"
+      hx-trigger="keyup changed delay:300ms"
+      hx-target="#job-tbody"
+      hx-swap="innerHTML"
+      hx-include="#filter-status,#filter-printer"
+    >
   </div>
-</section>
+
+  <!-- Filter pills -->
+  <div class="filter-pills" id="status-pills">
+    <button class="filter-pill active" onclick="setStatusFilter('',this)">All</button>
+    <button class="filter-pill" onclick="setStatusFilter('pending',this)">Pending</button>
+    <button class="filter-pill" onclick="setStatusFilter('printing',this)">Printing</button>
+    <button class="filter-pill" onclick="setStatusFilter('done',this)">Done</button>
+    <button class="filter-pill" onclick="setStatusFilter('failed',this)">Failed</button>
+  </div>
+
+  <!-- Hidden inputs for HTMX includes -->
+  <input type="hidden" id="filter-status"  name="status"  value="">
+  <input type="hidden" id="filter-printer" name="printer" value="">
+
+  <button class="btn btn-primary" style="flex-shrink:0;"
+          onclick="document.getElementById('add-job-modal').classList.add('open')">
+    <i data-lucide="plus"></i> Add Job
+  </button>
+
+</div>
+
+<!-- ── Mobile: card list ─────────────────────────────────────── -->
+<div class="job-cards" id="job-cards-mobile">
+  {% for i in range(6) %}
+  <div class="job-card">
+    <div class="job-card-header">
+      <div>
+        <div class="job-name" style="color:var(--border-hi);">Loading...</div>
+        <div class="job-order">—</div>
+      </div>
+      <span class="badge badge-gray">—</span>
+    </div>
+    <div class="job-card-meta">
+      <i data-lucide="cpu"></i>
+      <span>—</span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ── Desktop: table ────────────────────────────────────────── -->
+<div class="table-wrap">
+  <table class="jobs-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Design</th>
+        <th>Order ID</th>
+        <th>Product</th>
+        <th>Status</th>
+        <th>Printer</th>
+        <th style="width:80px;">Progress</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="job-tbody"
+           hx-get="/api/jobs"
+           hx-trigger="load, every 5s"
+           hx-swap="innerHTML">
+      {% for i in range(6) %}
+      <tr>
+        <td class="text-mut">{{ loop.index }}</td>
+        <td><span class="design-swatch"></span></td>
+        <td><span class="order-id" style="opacity:0.3;">—</span></td>
+        <td style="color:var(--border-hi);">—</td>
+        <td><span class="badge badge-gray">—</span></td>
+        <td style="color:var(--border-hi);">—</td>
+        <td class="progress-cell">
+          <div class="progress-wrap"><div class="progress-bar blue" style="width:0%"></div></div>
+        </td>
+        <td>
+          <div class="actions-cell">
+            <button class="btn btn-ghost btn-icon" disabled><i data-lucide="play"></i></button>
+            <button class="btn btn-ghost btn-icon" disabled><i data-lucide="pause"></i></button>
+            <button class="btn btn-ghost btn-icon" disabled><i data-lucide="trash-2"></i></button>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="table-footer">
+    <span>Loading jobs...</span>
+    <span class="mono" style="font-size:11px;">auto &bull; 5s</span>
+  </div>
+</div>
+
+<!-- ── Add Job Modal ─────────────────────────────────────────── -->
+<div class="modal-backdrop" id="add-job-modal"
+     onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-box">
+    <div class="modal-title">New Print Job</div>
+    <form hx-post="/api/jobs"
+          hx-swap="none"
+          hx-on::after-request="
+            document.getElementById('add-job-modal').classList.remove('open');
+            htmx.trigger('#job-tbody','load')">
+
+      <div class="form-row">
+        <label class="form-label">Order ID</label>
+        <input class="input" name="order_id" placeholder="e.g. A-1284" required>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Product / Description</label>
+        <input class="input" name="product" placeholder="e.g. T-Shirt 2XL Black" required>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Target Printer</label>
+        <select class="select" name="printer">
+          <option value="dtg">DTG Pro 16</option>
+          <option value="dtf">DTF Station</option>
+          <option value="uv">UV Flatbed</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Design File Path</label>
+        <input class="input" name="design_path" placeholder="D:\Rip\design-file.prn">
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost"
+                onclick="document.getElementById('add-job-modal').classList.remove('open')">
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary">
+          <i data-lucide="plus"></i> Create Job
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setStatusFilter(val, btn) {
+  /* Update pills */
+  document.querySelectorAll('#status-pills .filter-pill').forEach(function(b) {
+    b.classList.remove('active');
+  });
+  btn.classList.add('active');
+
+  /* Update hidden input so HTMX includes it */
+  document.getElementById('filter-status').value = val;
+
+  /* Trigger refresh on desktop table */
+  htmx.trigger('#job-tbody', 'load');
+}
+</script>
 {% endblock %}

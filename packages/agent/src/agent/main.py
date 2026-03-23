@@ -9,7 +9,7 @@ import uvicorn
 
 from common.config import AgentConfig
 from common.models.printer import PrinterType
-from agent.api import app, set_backend
+from agent.api import app, set_backend, set_printer_info
 from agent.printer.mock import MockBackend
 from agent.printer.dtg import DTGBackend
 from agent.printexp.detector import detect_printer_type
@@ -86,6 +86,7 @@ def main() -> None:
             print(f"[agent] Real mode — printer type: {printer_type.value}", flush=True)
 
     set_backend(backend)
+    set_printer_info(name=config.name, printer_type=printer_type.value)
 
     print(f"[agent] Starting on {args.host}:{config.port}", flush=True)
     uvicorn.run(app, host=args.host, port=config.port, log_level="info")

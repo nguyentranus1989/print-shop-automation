@@ -23,12 +23,21 @@ app = FastAPI(title="PrintFlow Agent", version="0.1.0")
 
 # Set by main.py before app starts
 _backend: PrinterBackend | None = None
+_printer_name: str = "PrintFlow-Agent"
+_printer_type: str = "dtg"
 
 
 def set_backend(backend: PrinterBackend) -> None:
     """Inject the backend instance (called from main.py)."""
     global _backend
     _backend = backend
+
+
+def set_printer_info(name: str, printer_type: str) -> None:
+    """Set printer identity for /health and /status responses."""
+    global _printer_name, _printer_type
+    _printer_name = name
+    _printer_type = printer_type
 
 
 def _get_backend() -> PrinterBackend:
@@ -58,8 +67,14 @@ class CommandRequest(BaseModel):
 
 @app.get("/health")
 def health_check() -> dict[str, str]:
-    """Agent liveness probe."""
-    return {"status": "ok", "service": "printflow-agent"}
+    """Agent liveness probe — includes printer identity for auto-registration."""
+    return {
+        "status": "ok",
+        "service": "printflow-agent",
+        "printer_type": _printer_type,
+        "printer_name": _printer_name,
+        "version": "0.1.0",
+    }
 
 
 @app.get("/status")

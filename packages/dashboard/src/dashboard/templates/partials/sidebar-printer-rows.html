@@ -1,0 +1,13 @@
+{% for p in printers %}
+{% set dot_cls = 'busy' if p.printing else ('online' if p.connected else 'error') %}
+<div class="sidebar-status-row">
+  <span class="dot {{ dot_cls }}"></span>
+  <i data-lucide="printer"></i>
+  <span>{{ p.name }}</span>
+</div>
+{% endfor %}
+{% if not printers %}
+<div class="sidebar-status-row" style="color:var(--text-mut);font-size:11px;">
+  No printers registered
+</div>
+{% endif %}

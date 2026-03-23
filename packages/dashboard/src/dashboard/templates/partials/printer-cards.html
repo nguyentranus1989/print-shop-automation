@@ -1,0 +1,62 @@
+{% if not printers %}
+<!-- Empty state -->
+<div class="empty-state">
+  <i data-lucide="printer" style="width:48px;height:48px;color:var(--text-mut);"></i>
+  <div class="empty-state-title">No printers registered</div>
+  <div class="empty-state-sub">Click <strong>Add Printer</strong> to get started</div>
+</div>
+{% else %}
+{% for p in printers %}
+{% set dot_cls = 'busy' if p.printing else ('online' if p.connected else 'error') %}
+{% set badge_cls = 'blue' if p.printer_type == 'dtg' else ('green' if p.printer_type == 'dtf' else 'yellow') %}
+<div class="printer-card">
+
+  <div class="printer-card-header">
+    <div>
+      <div class="printer-name">{{ p.name }}</div>
+      <div class="printer-status-row">
+        <span class="dot {{ dot_cls }}"></span>
+        <span class="printer-job-name">
+          {% if p.printing and p.current_job %}{{ p.current_job }}{% elif p.connected %}Idle{% else %}Offline{% endif %}
+        </span>
+      </div>
+    </div>
+    <span class="badge badge-{{ badge_cls }}">{{ p.printer_type | upper }}</span>
+  </div>
+
+  {% set pct = 0 %}
+  <div class="printer-progress">
+    <div class="printer-progress-header">
+      <span class="printer-progress-label">Progress</span>
+      <span class="printer-progress-pct">{{ pct }}%</span>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar {{ 'blue' if dot_cls == 'busy' else ('green' if dot_cls == 'online' else 'error') }}"
+           style="width:{{ pct }}%"></div>
+    </div>
+  </div>
+
+  <div class="ink-section">
+    <div class="ink-section-label">Ink</div>
+    {% set levels = p.ink_levels %}
+    {% for channel, css_cls in [('cyan','cyan'),('magenta','magenta'),('yellow','yellow'),('black','black'),('white','white')] %}
+    {% set val = levels.get(channel, 0) | round | int %}
+    <div class="ink-row">
+      <div class="ink-label">{{ channel[0] | upper }}</div>
+      <div class="ink-track"><div class="ink-fill {{ css_cls }}" style="width:{{ val }}%"></div></div>
+      <div class="ink-pct">{{ val }}%</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="printer-footer">
+    <div class="queue-depth">
+      <i data-lucide="layers"></i>
+      <span>{{ p.printer_type | upper }}</span>
+    </div>
+    <span class="dot {{ dot_cls }}"></span>
+  </div>
+
+</div>
+{% endfor %}
+{% endif %}

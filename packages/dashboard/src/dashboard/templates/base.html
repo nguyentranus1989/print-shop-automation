@@ -1,36 +1,158 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}PrintFlow{% endblock %}</title>
-  <!-- Pico CSS — classless, dark mode, responsive -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Design system -->
+  <link rel="stylesheet" href="/static/style.css">
+
   <!-- HTMX 2.0 -->
   <script src="https://unpkg.com/htmx.org@2.0.0/dist/htmx.min.js" defer></script>
+
+  <!-- Lucide icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
   {% block head %}{% endblock %}
 </head>
 <body>
-  <header class="container">
-    <nav>
-      <ul>
-        <li><strong>PrintFlow</strong></li>
-      </ul>
-      <ul>
-        <li><a href="/">Dashboard</a></li>
-        <li><a href="/jobs">Job Queue</a></li>
-        <li><a href="/printers">Printers</a></li>
-        <li><a href="/analytics">Analytics</a></li>
-      </ul>
+<div class="app">
+
+  <!-- ── Sidebar (desktop only) ───────────────────────────── -->
+  <aside class="sidebar">
+
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <div class="logo-icon"><i data-lucide="printer"></i></div>
+        <div>
+          <div class="logo-text">PrintFlow</div>
+          <div class="logo-sub">Shop Automation</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Operations</div>
+      <a href="/"          class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+        <i data-lucide="layout-dashboard"></i> Dashboard
+      </a>
+      <a href="/jobs"      class="nav-link {% if active_page == 'jobs' %}active{% endif %}">
+        <i data-lucide="list-ordered"></i> Job Queue
+      </a>
+      <a href="/printers"  class="nav-link {% if active_page == 'printers' %}active{% endif %}">
+        <i data-lucide="cpu"></i> Printer Control
+      </a>
+      <div class="nav-section-label" style="margin-top:4px;">Insights</div>
+      <a href="/analytics" class="nav-link {% if active_page == 'analytics' %}active{% endif %}">
+        <i data-lucide="bar-chart-2"></i> Analytics
+      </a>
     </nav>
-  </header>
 
-  <main class="container">
-    {% block content %}{% endblock %}
-  </main>
+    <!-- Printer status at bottom of sidebar — dynamic from DB -->
+    <div class="sidebar-status"
+         id="sidebar-printer-status"
+         hx-get="/api/printers/sidebar-rows"
+         hx-trigger="load, every 5s"
+         hx-swap="innerHTML">
+    </div>
 
-  <footer class="container">
-    <small>PrintFlow &mdash; Print Shop Automation</small>
-  </footer>
+    <div class="sidebar-footer">
+      <a href="/settings" class="nav-link {% if active_page == 'settings' %}active{% endif %}">
+        <i data-lucide="settings"></i> Settings
+      </a>
+      <div class="sidebar-version">PrintFlow v0.1.0</div>
+    </div>
+
+  </aside>
+
+  <!-- ── Main area ─────────────────────────────────────────── -->
+  <div class="main">
+
+    <!-- Top bar -->
+    <div class="topbar">
+
+      <!-- Logo shown on mobile (sidebar hidden) -->
+      <div class="topbar-logo">
+        <div class="topbar-logo-mark"><i data-lucide="printer"></i></div>
+        <span class="topbar-logo-text">PrintFlow</span>
+      </div>
+
+      <div class="topbar-title">{% block page_title %}PrintFlow{% endblock %}</div>
+
+      <!-- Printer status dots — dynamic from DB -->
+      <div class="printer-dots"
+           id="topbar-printer-status"
+           hx-get="/api/printers/status-dots"
+           hx-trigger="load, every 5s"
+           hx-swap="innerHTML">
+      </div>
+
+      <div class="topbar-clock mono" id="clock">--:--:--</div>
+    </div>
+
+    <!-- Page content -->
+    <div class="page-content">
+      {% block content %}{% endblock %}
+    </div>
+
+  </div><!-- .main -->
+
+  <!-- ── Bottom nav (mobile only) ─────────────────────────── -->
+  <nav class="bottom-nav" aria-label="Main navigation">
+    <a href="/"          class="bottom-nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+      <i data-lucide="layout-dashboard"></i>
+      <span>Dashboard</span>
+    </a>
+    <a href="/jobs"      class="bottom-nav-item {% if active_page == 'jobs' %}active{% endif %}">
+      <i data-lucide="list-ordered"></i>
+      <span>Jobs</span>
+    </a>
+    <a href="/printers"  class="bottom-nav-item {% if active_page == 'printers' %}active{% endif %}">
+      <i data-lucide="cpu"></i>
+      <span>Control</span>
+    </a>
+    <a href="/analytics" class="bottom-nav-item {% if active_page == 'analytics' %}active{% endif %}">
+      <i data-lucide="bar-chart-2"></i>
+      <span>Analytics</span>
+    </a>
+  </nav>
+
+</div><!-- .app -->
+
+<script>
+  /* Live clock */
+  (function tick() {
+    var el = document.getElementById('clock');
+    if (el) el.textContent = new Date().toLocaleTimeString('en-US', {hour12: false});
+    setTimeout(tick, 1000);
+  })();
+
+  /* Re-init Lucide after every HTMX swap */
+  function reinitIcons() {
+    if (window.lucide) lucide.createIcons();
+  }
+
+  document.addEventListener('DOMContentLoaded', reinitIcons);
+  document.addEventListener('htmx:afterSwap', reinitIcons);
+  document.addEventListener('htmx:afterSettle', reinitIcons);
+
+  /* statusClass helper — used by page-level scripts */
+  function statusClass(status) {
+    var s = (status || '').toLowerCase();
+    if (s === 'printing' || s === 'busy') return 'busy';
+    if (s === 'connected' || s === 'online' || s === 'idle') return 'online';
+    if (s === 'warning' || s === 'warn') return 'warn';
+    if (s === 'error' || s === 'offline' || s === 'disconnected') return 'error';
+    return '';
+  }
+</script>
+
+{% block scripts %}{% endblock %}
 </body>
 </html>

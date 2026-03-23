@@ -1,35 +1,147 @@
 {% extends "base.html" %}
 {% block title %}Analytics — PrintFlow{% endblock %}
+{% block page_title %}Analytics{% endblock %}
+
 {% block content %}
-<h1>Analytics</h1>
 
-<section>
-  <h2>Today</h2>
-  <div id="analytics-summary"
-       hx-get="/api/analytics/summary"
-       hx-trigger="load, every 30s"
-       hx-swap="innerHTML">
-    <p aria-busy="true">Loading...</p>
-  </div>
-</section>
+<!-- ── Time range ────────────────────────────────────────────── -->
+<div class="time-range-bar">
+  <button class="range-btn active" onclick="setRange('today',this)">Today</button>
+  <button class="range-btn"        onclick="setRange('week',this)">Week</button>
+  <button class="range-btn"        onclick="setRange('month',this)">Month</button>
+</div>
 
-<section>
-  <h2>Throughput (last 24h)</h2>
-  <div id="throughput"
-       hx-get="/api/analytics/throughput"
-       hx-trigger="load"
-       hx-swap="innerHTML">
-    <p aria-busy="true">Loading...</p>
-  </div>
-</section>
+<!-- ── KPI cards — HTMX polled ───────────────────────────────── -->
+<div class="grid-kpi"
+     id="analytics-kpis"
+     hx-get="/api/analytics/summary"
+     hx-trigger="load, every 30s"
+     hx-swap="innerHTML">
 
-<section>
-  <h2>Ink Levels</h2>
-  <div id="ink-chart"
-       hx-get="/api/analytics/ink"
-       hx-trigger="load, every 60s"
-       hx-swap="innerHTML">
-    <p aria-busy="true">Loading...</p>
+  <div class="card">
+    <div class="card-title">Cost / Print</div>
+    <div style="margin-top:10px;">
+      <span class="analytics-kpi-value">$2.14</span>
+    </div>
+    <div class="analytics-kpi-label">Per print unit</div>
+    <div class="delta-badge delta-down">
+      <i data-lucide="trending-down"></i> -$0.12 vs prior
+    </div>
   </div>
-</section>
+
+  <div class="card">
+    <div class="card-title">Total Jobs</div>
+    <div style="margin-top:10px;">
+      <span class="analytics-kpi-value">148</span>
+    </div>
+    <div class="analytics-kpi-label">Jobs processed</div>
+    <div class="delta-badge delta-up">
+      <i data-lucide="trending-up"></i> +23 vs prior
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Utilization</div>
+    <div style="margin-top:10px;">
+      <span class="analytics-kpi-value">73</span><span class="analytics-kpi-unit">%</span>
+    </div>
+    <div class="analytics-kpi-label">Machine uptime</div>
+    <div class="delta-badge delta-up">
+      <i data-lucide="trending-up"></i> +5% vs prior
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">First Pass Yield</div>
+    <div style="margin-top:10px;">
+      <span class="analytics-kpi-value">96.2</span><span class="analytics-kpi-unit">%</span>
+    </div>
+    <div class="analytics-kpi-label">No-rework rate</div>
+    <div class="delta-badge delta-up">
+      <i data-lucide="trending-up"></i> +1.3% vs prior
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Charts 2×2 ────────────────────────────────────────────── -->
+<div class="chart-grid">
+
+  <!-- Jobs per Day — sparkline bars -->
+  <div class="chart-container">
+    <div class="chart-title">Jobs per Day</div>
+    <div class="chart-sub">Completed print jobs</div>
+    <div class="spark-bars">
+      {% for h in [45, 62, 38, 75, 55, 80, 90, 68, 72, 85, 60, 95, 78, 88] %}
+      <div class="spark-bar" style="height:{{ h }}%"></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Cost per Print trend — placeholder -->
+  <div class="chart-container">
+    <div class="chart-title">Cost per Print Trend</div>
+    <div class="chart-sub">Running average ($)</div>
+    <div class="chart-placeholder">
+      <i data-lucide="line-chart"></i>
+      <span>Coming soon</span>
+    </div>
+  </div>
+
+  <!-- Machine utilization — donut mock -->
+  <div class="chart-container">
+    <div class="chart-title">Machine Utilization</div>
+    <div class="chart-sub">By printer type</div>
+    <div style="padding-top:12px;text-align:center;">
+      <div class="donut-mock">
+        <div class="donut-hole">73%</div>
+      </div>
+      <div class="flex-center gap-16" style="justify-content:center;margin-top:12px;">
+        <span style="font-size:11px;display:flex;align-items:center;gap:4px;color:var(--text-sec);">
+          <span style="width:10px;height:10px;border-radius:2px;background:var(--primary);display:inline-block;"></span>
+          Active
+        </span>
+        <span style="font-size:11px;display:flex;align-items:center;gap:4px;color:var(--text-sec);">
+          <span style="width:10px;height:10px;border-radius:2px;background:var(--elevated);border:1px solid var(--border);display:inline-block;"></span>
+          Idle
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ink consumption — horizontal bars -->
+  <div class="chart-container">
+    <div class="chart-title">Ink Consumption</div>
+    <div class="chart-sub">ml used this period</div>
+    <div class="ink-consumption-bars">
+      {% for label, cls, val, mx in [
+          ('Cyan',    'cyan',    124, 200),
+          ('Mag',     'magenta',  98, 200),
+          ('Yellow',  'yellow',  151, 200),
+          ('Black',   'black',    87, 200),
+          ('White',   'white',   203, 300)
+      ] %}
+      <div class="ink-cons-row">
+        <div class="ink-cons-label">{{ label }}</div>
+        <div class="ink-cons-track">
+          <div class="ink-cons-fill ink-fill {{ cls }}" style="width:{{ (val/mx*100)|round|int }}%"></div>
+        </div>
+        <div class="ink-cons-val">{{ val }}ml</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setRange(range, btn) {
+  document.querySelectorAll('.range-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  htmx.trigger('#analytics-kpis', 'load');
+}
+</script>
 {% endblock %}

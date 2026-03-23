@@ -27,11 +27,17 @@ class Printer(Base):
     agent_url: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     printer_type: Mapped[str] = mapped_column(String(20), nullable=False, default="dtg")
 
+    # Human-readable status string: online/offline/printing/error
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="offline")
+
     # Last-known status (updated by polling loop)
     connected: Mapped[bool] = mapped_column(Integer, default=0)  # SQLite has no BOOL
     printing: Mapped[bool] = mapped_column(Integer, default=0)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     current_job_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+
+    # Registration timestamp
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships
     jobs: Mapped[list["Job"]] = relationship("Job", back_populates="printer")

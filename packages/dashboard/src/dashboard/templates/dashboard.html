@@ -1,26 +1,224 @@
 {% extends "base.html" %}
 {% block title %}Dashboard — PrintFlow{% endblock %}
+{% block page_title %}Production Overview{% endblock %}
+
 {% block content %}
-<h1>Dashboard</h1>
-<p><!-- HTMX UI to be implemented by UI designer --></p>
 
-<section>
-  <h2>Printer Status</h2>
-  <div id="printer-status"
-       hx-get="/api/printers"
-       hx-trigger="load, every 5s"
-       hx-swap="innerHTML">
-    <p aria-busy="true">Loading printers...</p>
-  </div>
-</section>
+<!-- ── KPI Strip ─────────────────────────────────────────────── -->
+<div class="grid-kpi"
+     id="kpi-strip"
+     hx-get="/api/analytics/summary"
+     hx-trigger="load, every 10s"
+     hx-swap="none"
+     hx-on::after-request="updateKpis(event)">
 
-<section>
-  <h2>Today's Summary</h2>
-  <div id="summary"
-       hx-get="/api/analytics/summary"
-       hx-trigger="load, every 10s"
-       hx-swap="innerHTML">
-    <p aria-busy="true">Loading stats...</p>
+  <div class="kpi-card">
+    <div class="kpi-label">Pending</div>
+    <div class="kpi-value text-sec" id="kpi-pending">--</div>
+    <div class="kpi-pulse">
+      <span class="dot"></span>
+      <span style="font-size:11px;color:var(--text-mut);">waiting</span>
+    </div>
   </div>
-</section>
+
+  <div class="kpi-card">
+    <div class="kpi-label">Printing</div>
+    <div class="kpi-value text-primary" id="kpi-printing">--</div>
+    <div class="kpi-pulse">
+      <span class="dot busy"></span>
+      <span style="font-size:11px;color:var(--text-mut);">active</span>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-label">Completed</div>
+    <div class="kpi-value text-success" id="kpi-completed">--</div>
+    <div class="kpi-pulse">
+      <span class="dot online"></span>
+      <span style="font-size:11px;color:var(--text-mut);">today</span>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-label">Failed</div>
+    <div class="kpi-value text-danger" id="kpi-defects">--</div>
+    <div class="kpi-pulse">
+      <span class="dot error"></span>
+      <span style="font-size:11px;color:var(--text-mut);">today</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Printer Cards ─────────────────────────────────────────── -->
+<div class="section-header mt-24">
+  <div class="section-title">Printer Status</div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span class="text-mut" style="font-size:11px;font-family:var(--font-mono);">auto &bull; 3s</span>
+    <button class="btn btn-outline-primary"
+            style="font-size:12px;padding:4px 12px;"
+            onclick="openAddPrinterModal()">
+      <i data-lucide="plus"></i> Add Printer
+    </button>
+  </div>
+</div>
+
+<div class="printer-scroll"
+     id="printer-cards"
+     hx-get="/api/printers/cards"
+     hx-trigger="load, every 3s"
+     hx-swap="innerHTML">
+  <!-- HTMX replaces this content with partials/printer-cards.html -->
+  <div class="empty-state">
+    <i data-lucide="loader" style="width:32px;height:32px;color:var(--text-mut);"></i>
+    <div class="empty-state-sub">Loading printers…</div>
+  </div>
+</div>
+
+<!-- ── Recent Activity ───────────────────────────────────────── -->
+<div class="section-header mt-24">
+  <div class="section-title">Recent Activity</div>
+</div>
+
+<div class="card" style="padding:8px;">
+  <div class="activity-list">
+    <div class="activity-row">
+      <div class="activity-icon warn"><i data-lucide="droplets"></i></div>
+      <div class="activity-body">
+        <div class="activity-msg">Ink levels will appear here once printers are registered.</div>
+        <div class="activity-time">--</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add Printer Modal ─────────────────────────────────────── -->
+<div id="add-printer-modal" class="modal-overlay" style="display:none;" onclick="closeAddPrinterModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title">Add Printer</div>
+      <button class="modal-close" onclick="closeAddPrinterModal()">&times;</button>
+    </div>
+
+    <form id="add-printer-form" onsubmit="submitAddPrinter(event)">
+      <div class="form-group">
+        <label class="form-label" for="ap-name">Printer Name</label>
+        <input id="ap-name" name="name" class="form-input" placeholder="e.g. DTG-1" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="ap-url">Agent URL</label>
+        <input id="ap-url" name="agent_url" class="form-input"
+               placeholder="http://192.168.1.101:8080" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="ap-type">Printer Type</label>
+        <select id="ap-type" name="printer_type" class="form-input">
+          <option value="auto">Auto-detect</option>
+          <option value="dtg">DTG</option>
+          <option value="dtf">DTF</option>
+          <option value="uv">UV</option>
+        </select>
+      </div>
+
+      <div id="ap-test-result" class="form-hint" style="min-height:20px;"></div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="testConnection()">
+          <i data-lucide="plug"></i> Test Connection
+        </button>
+        <button type="button" class="btn btn-ghost" onclick="closeAddPrinterModal()">Cancel</button>
+        <button id="ap-submit" type="submit" class="btn btn-primary">
+          <i data-lucide="plus"></i> Add
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateKpis(evt) {
+  try {
+    var d = JSON.parse(evt.detail.xhr.responseText);
+    ['pending', 'printing', 'completed', 'defects'].forEach(function(k) {
+      var el = document.getElementById('kpi-' + k);
+      if (el && d[k] !== undefined) el.textContent = d[k];
+    });
+  } catch(e) {}
+}
+
+/* ── Add Printer modal ─────────────────────────────────────── */
+function openAddPrinterModal() {
+  document.getElementById('add-printer-modal').style.display = 'flex';
+  document.getElementById('ap-test-result').textContent = '';
+  document.getElementById('add-printer-form').reset();
+  lucide.createIcons();
+}
+
+function closeAddPrinterModal(evt) {
+  if (!evt || evt.target === document.getElementById('add-printer-modal')) {
+    document.getElementById('add-printer-modal').style.display = 'none';
+  }
+}
+
+function testConnection() {
+  var url = document.getElementById('ap-url').value.trim();
+  var hint = document.getElementById('ap-test-result');
+  if (!url) { hint.textContent = 'Enter an agent URL first.'; hint.style.color = 'var(--text-mut)'; return; }
+  hint.textContent = 'Testing…'; hint.style.color = 'var(--text-mut)';
+
+  fetch(url.replace(/\/$/, '') + '/health', {method: 'GET'})
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(d) {
+      hint.textContent = 'Connected — ' + (d.printer_name || '') + ' (' + (d.printer_type || '?').toUpperCase() + ')';
+      hint.style.color = 'var(--color-success, #22c55e)';
+      if (d.printer_type) document.getElementById('ap-type').value = d.printer_type;
+    })
+    .catch(function() {
+      hint.textContent = 'Could not reach agent. Check the URL.';
+      hint.style.color = 'var(--color-danger, #ef4444)';
+    });
+}
+
+function submitAddPrinter(evt) {
+  evt.preventDefault();
+  var btn = document.getElementById('ap-submit');
+  btn.disabled = true;
+  var hint = document.getElementById('ap-test-result');
+  hint.textContent = 'Registering…'; hint.style.color = 'var(--text-mut)';
+
+  var payload = {
+    name: document.getElementById('ap-name').value.trim(),
+    agent_url: document.getElementById('ap-url').value.trim(),
+    printer_type: document.getElementById('ap-type').value,
+  };
+
+  fetch('/api/printers', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload),
+  })
+  .then(function(r) {
+    if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || 'Error'); });
+    return r.json();
+  })
+  .then(function() {
+    closeAddPrinterModal();
+    // Trigger immediate refresh of printer cards
+    htmx.trigger('#printer-cards', 'load');
+  })
+  .catch(function(e) {
+    hint.textContent = e.message;
+    hint.style.color = 'var(--color-danger, #ef4444)';
+    btn.disabled = false;
+  });
+}
+</script>
 {% endblock %}

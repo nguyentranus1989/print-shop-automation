@@ -1,14 +1,227 @@
 {% extends "base.html" %}
-{% block title %}Printers — PrintFlow{% endblock %}
-{% block content %}
-<h1>Printer Control</h1>
+{% block title %}Printer Control — PrintFlow{% endblock %}
+{% block page_title %}Printer Control{% endblock %}
 
-<section>
-  <div id="printer-controls"
-       hx-get="/api/printers"
-       hx-trigger="load, every 3s"
-       hx-swap="innerHTML">
-    <p aria-busy="true">Loading printers...</p>
+{% block content %}
+
+<!-- ── Printer selector tabs — loaded from DB via HTMX ─────── -->
+<div class="printer-tabs"
+     id="printer-tabs"
+     hx-get="/api/printers/tabs"
+     hx-trigger="load"
+     hx-swap="innerHTML">
+  <span style="color:var(--text-mut);font-size:13px;padding:8px;">Loading printers…</span>
+</div>
+
+<!-- ── Control grid ──────────────────────────────────────────── -->
+<div class="control-grid" id="control-grid" style="display:none;">
+
+  <!-- Left card: Movement -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Movement Control</div>
+      <span class="badge badge-blue" id="active-printer-badge">--</span>
+    </div>
+
+    <!-- D-pad: 3×3 grid -->
+    <div class="dpad-wrap">
+      <div class="dpad-btn dpad-empty"></div>
+      <button class="dpad-btn" onclick="sendMove('Y','+')" title="Y+ (forward)">
+        <i data-lucide="arrow-up"></i>
+      </button>
+      <div class="dpad-btn dpad-empty"></div>
+
+      <button class="dpad-btn" onclick="sendMove('X','-')" title="X- (left)">
+        <i data-lucide="arrow-left"></i>
+      </button>
+      <div class="dpad-btn dpad-center">
+        <i data-lucide="crosshair" style="color:var(--text-mut);width:20px;height:20px;"></i>
+      </div>
+      <button class="dpad-btn" onclick="sendMove('X','+')" title="X+ (right)">
+        <i data-lucide="arrow-right"></i>
+      </button>
+
+      <div class="dpad-btn dpad-empty"></div>
+      <button class="dpad-btn" onclick="sendMove('Y','-')" title="Y- (backward)">
+        <i data-lucide="arrow-down"></i>
+      </button>
+      <div class="dpad-btn dpad-empty"></div>
+    </div>
+
+    <!-- Step size -->
+    <div class="step-selector">
+      <button class="step-btn"        onclick="setStep('0.1',this)">0.1</button>
+      <button class="step-btn active" onclick="setStep('1.0',this)">1.0</button>
+      <button class="step-btn"        onclick="setStep('5.0',this)">5.0</button>
+      <button class="step-btn"        onclick="setStep('10.0',this)">10.0</button>
+    </div>
+    <div style="text-align:center;font-size:11px;color:var(--text-mut);margin-top:4px;">Step size (mm)</div>
+
+    <div class="home-btns">
+      <button class="btn btn-ghost" onclick="sendControl('home_x')">
+        <i data-lucide="move-horizontal"></i> Home X
+      </button>
+      <button class="btn btn-ghost" onclick="sendControl('home_y')">
+        <i data-lucide="move-vertical"></i> Home Y
+      </button>
+    </div>
+
+    <!-- Z axis — shown only for UV printers -->
+    <div class="z-btns" id="z-controls" style="display:none;">
+      <button class="btn btn-ghost" onclick="sendMove('Z','+')">
+        <i data-lucide="chevrons-up"></i> Z Up
+      </button>
+      <button class="btn btn-ghost" onclick="sendMove('Z','-')">
+        <i data-lucide="chevrons-down"></i> Z Down
+      </button>
+    </div>
+  </div><!-- end movement card -->
+
+  <!-- Right card: Status + Actions -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Status &amp; Actions</div>
+    </div>
+
+    <div class="pos-readout"
+         id="pos-readout"
+         hx-get="/api/printers/cards"
+         hx-trigger="every 2s"
+         hx-swap="none"
+         hx-on::after-request="updatePosFromCards(event)">
+      <div class="pos-axis">
+        <span class="axis-label">X</span>
+        <span class="axis-value mono" id="pos-x">000.0</span>
+        <span class="axis-unit">mm</span>
+      </div>
+      <div class="pos-axis">
+        <span class="axis-label">Y</span>
+        <span class="axis-value mono" id="pos-y">000.0</span>
+        <span class="axis-unit">mm</span>
+      </div>
+      <div class="pos-axis" id="pos-z-row">
+        <span class="axis-label">Z</span>
+        <span class="axis-value mono" id="pos-z">00.0</span>
+        <span class="axis-unit">mm</span>
+      </div>
+    </div>
+
+    <div class="section-divider">Actions</div>
+    <div class="action-grid">
+      <button class="btn btn-success btn-lg" onclick="sendControl('print')">
+        <i data-lucide="play-circle"></i> Print
+      </button>
+      <button class="btn btn-warning btn-lg" onclick="sendControl('pause')">
+        <i data-lucide="pause-circle"></i> Pause
+      </button>
+      <button class="btn btn-danger btn-lg" onclick="sendControl('cancel')">
+        <i data-lucide="stop-circle"></i> Cancel
+      </button>
+      <button class="btn btn-outline-primary btn-lg" onclick="sendControl('check')">
+        <i data-lucide="scan"></i> Check
+      </button>
+    </div>
+
+    <div class="section-divider">Maintenance</div>
+    <div class="maintenance-row">
+      <button class="btn-outline-gray" onclick="sendControl('clean')">
+        <i data-lucide="sparkles"></i> Clean
+      </button>
+      <button class="btn-outline-gray" onclick="sendControl('flash')">
+        <i data-lucide="zap"></i> Flash
+      </button>
+      <button class="btn-outline-gray" onclick="sendControl('keep_wet')">
+        <i data-lucide="droplets"></i> Keep Wet
+      </button>
+    </div>
+
+    <div class="conn-status">
+      <span class="dot online" id="conn-dot"></span>
+      <span id="conn-label">Connected — TCP 9100</span>
+    </div>
+  </div><!-- end status card -->
+
+</div><!-- end control-grid -->
+
+<!-- Empty state when no printers registered -->
+<div id="no-printers-msg" style="display:none;">
+  <div class="empty-state" style="margin-top:48px;">
+    <i data-lucide="printer" style="width:48px;height:48px;color:var(--text-mut);"></i>
+    <div class="empty-state-title">No printers registered</div>
+    <div class="empty-state-sub">Go to the <a href="/">Dashboard</a> and click <strong>Add Printer</strong>.</div>
   </div>
-</section>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// activePrinter is the numeric DB id; activePrinterType is 'dtg'/'dtf'/'uv'
+var activePrinter = null;
+var activePrinterType = null;
+var stepSize = '1.0';
+
+/* Called by HTMX when /api/printers/tabs partial is loaded */
+document.addEventListener('htmx:afterSwap', function(evt) {
+  if (evt.detail.target && evt.detail.target.id === 'printer-tabs') {
+    var firstTab = document.querySelector('.printer-tab');
+    if (firstTab) {
+      firstTab.click();
+      document.getElementById('control-grid').style.display = '';
+      document.getElementById('no-printers-msg').style.display = 'none';
+    } else {
+      document.getElementById('control-grid').style.display = 'none';
+      document.getElementById('no-printers-msg').style.display = '';
+    }
+  }
+});
+
+function selectPrinterTab(id, ptype, btn) {
+  activePrinter = id;
+  activePrinterType = ptype;
+  document.querySelectorAll('.printer-tab').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  var labels = {dtg:'DTG', dtf:'DTF', uv:'UV'};
+  document.getElementById('active-printer-badge').textContent = labels[ptype] || ptype.toUpperCase();
+  document.getElementById('z-controls').style.display = ptype === 'uv' ? 'flex' : 'none';
+}
+
+function setStep(val, btn) {
+  stepSize = val;
+  document.querySelectorAll('.step-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+}
+
+function sendMove(axis, dir) {
+  sendControl('move', {axis: axis, dir: dir, step: stepSize});
+}
+
+function sendControl(cmd, extra) {
+  if (!activePrinter) return;
+  fetch('/api/printers/' + activePrinter + '/control', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(Object.assign({command: cmd}, extra || {}))
+  }).catch(function() {});
+}
+
+/* pos-readout HTMX callback — reads from /api/printers/cards (JSON list) */
+function updatePosFromCards(evt) {
+  try {
+    var data = JSON.parse(evt.detail.xhr.responseText);
+    if (!Array.isArray(data)) return;
+    var p = data.find(function(d) { return d.id === activePrinter; });
+    if (!p) return;
+    var px = document.getElementById('pos-x');
+    var py = document.getElementById('pos-y');
+    if (px) px.textContent = formatPos(p.position_x, 5);
+    if (py) py.textContent = formatPos(p.position_y, 5);
+  } catch(e) {}
+}
+
+function formatPos(val, len) {
+  var s = (val != null ? parseFloat(val).toFixed(1) : '0.0');
+  return s.padStart(len, '0');
+}
+</script>
 {% endblock %}

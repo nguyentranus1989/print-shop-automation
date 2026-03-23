@@ -1,0 +1,10 @@
+{% for p in printers %}
+{% set dot_cls = 'busy' if p.printing else ('online' if p.connected else 'error') %}
+<div class="printer-dot-item" title="{{ p.name }} — {{ p.status }}">
+  <span class="dot {{ dot_cls }}"></span>
+  {{ p.printer_type | upper }}
+</div>
+{% endfor %}
+{% if not printers %}
+<div class="printer-dot-item" style="color:var(--text-mut);font-size:11px;">No printers</div>
+{% endif %}
