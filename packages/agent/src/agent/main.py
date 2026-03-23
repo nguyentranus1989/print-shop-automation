@@ -55,12 +55,29 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _find_config(cli_path: str) -> str:
+    """Find agent.toml — check CWD, then exe directory, then exe/agent/ subdir."""
+    from pathlib import Path
+
+    candidates = [
+        Path(cli_path),                                    # CWD / explicit path
+        Path(sys.executable).parent / "agent.toml",        # next to exe
+        Path(sys.executable).parent.parent / "agent.toml", # parent of exe dir
+    ]
+    for p in candidates:
+        if p.exists():
+            return str(p)
+    return cli_path  # fallback to default (will use defaults if missing)
+
+
 def main() -> None:
     parser = _build_arg_parser()
     args = parser.parse_args()
 
-    # Load config (falls back to defaults if file missing)
-    config = AgentConfig.load(args.config)
+    # Load config — search multiple locations
+    config_path = _find_config(args.config)
+    config = AgentConfig.load(config_path)
+    print(f"[agent] Config: {config_path} (dashboard: {config.dashboard_url})", flush=True)
 
     # Override port from CLI if given
     if args.port != 8080 or config.port == 8080:
