@@ -361,7 +361,8 @@ nas_path = "\\\\nas\\prn-files"
 temp_path = "C:\\Hstemp"
 "@
 
-    $toml | Out-File -FilePath $tomlPath -Encoding UTF8 -Force
+    # Write without BOM (PowerShell 5 adds BOM with -Encoding UTF8)
+    [System.IO.File]::WriteAllText($tomlPath, $toml, (New-Object System.Text.UTF8Encoding $false))
     $window.Tag = "saved"
     $window.Close()
 })

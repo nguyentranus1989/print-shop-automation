@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import socket
-
-import httpx
+import urllib.request
+import urllib.error
 
 
 def detect_lan_ip() -> str:
@@ -18,6 +19,22 @@ def detect_lan_ip() -> str:
         return ip
     except Exception:
         return "127.0.0.1"
+
+
+def _post_json(url: str, data: dict) -> tuple[int, str]:
+    """POST JSON using stdlib urllib. Returns (status_code, body)."""
+    body = json.dumps(data).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        resp = urllib.request.urlopen(req, timeout=10)
+        return resp.status, resp.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode("utf-8", errors="replace")
 
 
 async def register_with_dashboard(
@@ -40,25 +57,27 @@ async def register_with_dashboard(
         "printer_type": printer_type,
     }
 
-    dashboard_api = dashboard_url.rstrip("/") + "/api/printers"
+    dashboard_api = dashboard_url.strip().rstrip("/") + "/api/printers"
+    print(f"[agent] Registering with dashboard at {dashboard_api}", flush=True)
+    print(f"[agent] Agent URL: {agent_url}", flush=True)
 
     for attempt in range(5):
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.post(dashboard_api, json=payload)
+            status, body = await asyncio.get_event_loop().run_in_executor(
+                None, _post_json, dashboard_api, payload
+            )
 
-            if resp.status_code in (200, 201):
+            if status in (200, 201):
                 print(f"[agent] Registered with dashboard as '{agent_name}' at {agent_url}", flush=True)
                 return True
-            elif resp.status_code == 409:
-                # Already registered — that's fine
+            elif status == 409:
                 print(f"[agent] Already registered with dashboard at {agent_url}", flush=True)
                 return True
             else:
-                print(f"[agent] Registration failed: {resp.status_code} {resp.text}", flush=True)
+                print(f"[agent] Registration failed: HTTP {status} {body[:200]}", flush=True)
         except Exception as e:
             wait = 2 ** attempt
-            print(f"[agent] Dashboard unreachable ({e}), retrying in {wait}s...", flush=True)
+            print(f"[agent] Dashboard unreachable ({type(e).__name__}: {e}), retrying in {wait}s...", flush=True)
             await asyncio.sleep(wait)
 
     print("[agent] Could not register with dashboard after 5 attempts. Will retry later.", flush=True)
