@@ -253,8 +253,8 @@ $selectedIdx = if ($typeIndex.ContainsKey($initType)) { $typeIndex[$initType] } 
         <!-- Dashboard URL -->
         <StackPanel Grid.Row="5" Margin="0,0,0,16">
             <TextBlock Style="{StaticResource LabelStyle}">Dashboard Address</TextBlock>
-            <TextBox x:Name="txtDashboard" Style="{StaticResource InputStyle}" Text="http://localhost:8000"/>
-            <TextBlock Style="{StaticResource HintStyle}">URL of the central dashboard. Use localhost for same PC, or the dashboard PC's IP.</TextBlock>
+            <TextBox x:Name="txtDashboard" Style="{StaticResource InputStyle}" Text=""/>
+            <TextBlock Style="{StaticResource HintStyle}">e.g. http://134.199.201.228:8000 or http://localhost:8000 (same PC)</TextBlock>
         </StackPanel>
 
         <!-- Agent Name -->
@@ -315,6 +315,12 @@ $btnSave.Add_Click({
     # Validate path
     if (-not $txtPath.Text -or -not (Test-Path $txtPath.Text)) {
         [System.Windows.MessageBox]::Show("Please select a valid PrintExp folder.", "PrintFlow Setup", "OK", "Warning")
+        return
+    }
+
+    # Validate dashboard URL
+    if (-not $txtDashboard.Text -or $txtDashboard.Text -notmatch '^https?://') {
+        [System.Windows.MessageBox]::Show("Please enter the dashboard URL (e.g. http://134.199.201.228:8000)", "PrintFlow Setup", "OK", "Warning")
         return
     }
 
