@@ -182,10 +182,8 @@ async def register_printer(
     """
     manager = _get_manager()
 
-    # Validate unique URL
+    # Check if agent_url already registered — update instead of rejecting
     existing = db.query(Printer).filter(Printer.agent_url == req.agent_url).first()
-    if existing:
-        raise HTTPException(status_code=409, detail="Printer with this agent_url already exists")
 
     # Ping agent /health to validate + auto-detect type
     health = await manager.ping_health(req.agent_url)
@@ -198,18 +196,26 @@ async def register_printer(
     else:
         detected = req.printer_type
 
-    printer = Printer(
-        name=req.name,
-        agent_url=req.agent_url,
-        printer_type=detected,
-        status="offline",
-    )
-    db.add(printer)
-    db.commit()
-    db.refresh(printer)
+    if existing:
+        # Re-registration: update name and type, keep the same record
+        existing.name = req.name
+        existing.printer_type = detected
+        db.commit()
+        db.refresh(existing)
+        printer = existing
+    else:
+        printer = Printer(
+            name=req.name,
+            agent_url=req.agent_url,
+            printer_type=detected,
+            status="offline",
+        )
+        db.add(printer)
+        db.commit()
+        db.refresh(printer)
 
-    # Add to live polling immediately (no restart needed)
-    manager.add_printer(printer.id, printer.agent_url)
+        # Add to live polling immediately (no restart needed)
+        manager.add_printer(printer.id, printer.agent_url)
 
     return {
         "id": printer.id,

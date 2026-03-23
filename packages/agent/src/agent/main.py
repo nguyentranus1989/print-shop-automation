@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import sys
 
 import uvicorn
@@ -13,6 +14,7 @@ from agent.api import app, set_backend, set_printer_info
 from agent.printer.mock import MockBackend
 from agent.printer.dtg import DTGBackend
 from agent.printexp.detector import detect_printer_type
+from agent.registration import register_with_dashboard
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
@@ -87,6 +89,26 @@ def main() -> None:
 
     set_backend(backend)
     set_printer_info(name=config.name, printer_type=printer_type.value)
+
+    # Auto-register with dashboard after server starts
+    _reg_config = {
+        "dashboard_url": config.dashboard_url,
+        "name": config.name,
+        "port": config.port,
+        "printer_type": printer_type.value,
+    }
+
+    @app.on_event("startup")
+    async def _auto_register() -> None:
+        """Register this agent with the dashboard (non-blocking)."""
+        asyncio.create_task(
+            register_with_dashboard(
+                dashboard_url=_reg_config["dashboard_url"],
+                agent_name=_reg_config["name"],
+                agent_port=_reg_config["port"],
+                printer_type=_reg_config["printer_type"],
+            )
+        )
 
     print(f"[agent] Starting on {args.host}:{config.port}", flush=True)
     uvicorn.run(app, host=args.host, port=config.port, log_level="info")

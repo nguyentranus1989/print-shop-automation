@@ -250,8 +250,15 @@ $selectedIdx = if ($typeIndex.ContainsKey($initType)) { $typeIndex[$initType] } 
             </Grid>
         </StackPanel>
 
-        <!-- Agent Name -->
+        <!-- Dashboard URL -->
         <StackPanel Grid.Row="5" Margin="0,0,0,16">
+            <TextBlock Style="{StaticResource LabelStyle}">Dashboard Address</TextBlock>
+            <TextBox x:Name="txtDashboard" Style="{StaticResource InputStyle}" Text="http://localhost:8000"/>
+            <TextBlock Style="{StaticResource HintStyle}">URL of the central dashboard. Use localhost for same PC, or the dashboard PC's IP.</TextBlock>
+        </StackPanel>
+
+        <!-- Agent Name -->
+        <StackPanel Grid.Row="6" Margin="0,0,0,16">
             <TextBlock Style="{StaticResource LabelStyle}">Agent Display Name</TextBlock>
             <TextBox x:Name="txtName" Style="{StaticResource InputStyle}" Text="PrintFlow-Agent"/>
             <TextBlock Style="{StaticResource HintStyle}">Shown in the dashboard. e.g. "DTG Left", "Printer-01"</TextBlock>
@@ -281,6 +288,7 @@ $btnBrowse = $window.FindName("btnBrowse")
 $cmbType = $window.FindName("cmbType")
 $lblDetected = $window.FindName("lblDetected")
 $txtPort = $window.FindName("txtPort")
+$txtDashboard = $window.FindName("txtDashboard")
 $txtName = $window.FindName("txtName")
 $btnSave = $window.FindName("btnSave")
 $btnCancel = $window.FindName("btnCancel")
@@ -320,6 +328,7 @@ $btnSave.Add_Click({
     # Get values
     $exePath = (Find-PrintExpExe $txtPath.Text) -replace '\\','\\'
     $agentName = if ($txtName.Text) { $txtName.Text } else { "PrintFlow-Agent" }
+    $dashboardUrl = if ($txtDashboard.Text) { $txtDashboard.Text.TrimEnd('/') } else { "http://localhost:8000" }
     $typeNames = @("dtg", "dtf", "uv")
     $printerType = $typeNames[$cmbType.SelectedIndex]
 
@@ -339,7 +348,7 @@ memory_offset = 0x016CDB
 
 [network]
 port = $port
-dashboard_url = "http://localhost:8000"
+dashboard_url = "$dashboardUrl"
 
 [files]
 nas_path = "\\\\nas\\prn-files"
