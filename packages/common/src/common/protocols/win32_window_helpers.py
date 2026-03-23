@@ -53,14 +53,23 @@ def find_window_by_title_fragment(title_fragment: str) -> Optional[int]:
 
     try:
         import ctypes
+
+        # Window classes to ignore (File Explorer, browser tabs, etc.)
+        _IGNORE_CLASSES = {"CabinetWClass", "ExploreWClass", "Chrome_WidgetWin_1",
+                           "MozillaWindowClass", "ApplicationFrameWindow"}
+
         found: list[int] = []
 
         def callback(hwnd: int, _lparam: int) -> bool:
             buf = ctypes.create_unicode_buffer(256)
             user32.GetWindowTextW(hwnd, buf, 256)
             if title_fragment in buf.value:
-                found.append(hwnd)
-                return False  # stop enumeration
+                # Check window class to filter out Explorer/browser windows
+                cls_buf = ctypes.create_unicode_buffer(256)
+                user32.GetClassNameW(hwnd, cls_buf, 256)
+                if cls_buf.value not in _IGNORE_CLASSES:
+                    found.append(hwnd)
+                    return False  # stop enumeration
             return True
 
         user32.EnumWindows(EnumWindowsProc(callback), 0)
