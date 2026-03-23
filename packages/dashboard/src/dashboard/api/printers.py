@@ -185,14 +185,13 @@ async def register_printer(
     # Check if agent_url already registered — update instead of rejecting
     existing = db.query(Printer).filter(Printer.agent_url == req.agent_url).first()
 
-    # Ping agent /health to validate + auto-detect type
+    # Try to ping agent /health to validate + auto-detect type
+    # May fail if dashboard is cloud and agent is on a private LAN — that's OK
     health = await manager.ping_health(req.agent_url)
-    if health is None:
-        raise HTTPException(status_code=502, detail="Could not reach agent at the given URL")
 
     # Resolve printer type
     if req.printer_type == "auto":
-        detected = health.get("printer_type", "dtg")
+        detected = health.get("printer_type", "dtg") if health else "dtg"
     else:
         detected = req.printer_type
 
