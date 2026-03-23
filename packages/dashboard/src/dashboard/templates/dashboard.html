@@ -137,6 +137,29 @@
   </div>
 </div>
 
+<!-- ── Delete Printer Confirm Modal ─────────────────────────── -->
+<div id="delete-printer-modal" class="modal-overlay" style="display:none;" onclick="closeDeleteModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()" style="max-width:380px;">
+    <div class="modal-header">
+      <div class="modal-title">Remove Printer</div>
+      <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+    </div>
+    <p style="color:var(--text-sec);margin:0 0 8px;">
+      Are you sure you want to remove <strong id="del-printer-name"></strong>?
+    </p>
+    <p style="color:var(--text-mut);font-size:12px;margin:0 0 16px;">
+      The agent will still be running. It will re-register on next restart.
+    </p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="closeDeleteModal()">Cancel</button>
+      <button id="del-confirm-btn" type="button" class="btn" onclick="confirmDeletePrinter()"
+              style="background:var(--danger,#e53935);color:#fff;border-color:var(--danger,#e53935);">
+        <i data-lucide="trash-2"></i> Remove
+      </button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}

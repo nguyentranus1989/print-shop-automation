@@ -1,4 +1,4 @@
-/* PrintFlow — Dashboard: Add Printer modal logic */
+/* PrintFlow — Dashboard: Add Printer + Delete Printer modal logic */
 
 function openAddPrinterModal() {
   document.getElementById('add-printer-modal').style.display = 'flex';
@@ -72,4 +72,39 @@ function submitAddPrinter(evt) {
     hint.style.color = 'var(--danger)';
     btn.disabled = false;
   });
+}
+
+/* ── Delete Printer Modal ─────────────────────────────────── */
+
+var _deletePrinterId = null;
+
+function openDeleteModal(id, name) {
+  _deletePrinterId = id;
+  document.getElementById('del-printer-name').textContent = name;
+  document.getElementById('delete-printer-modal').style.display = 'flex';
+  lucide.createIcons();
+}
+
+function closeDeleteModal(evt) {
+  if (!evt || evt.target === document.getElementById('delete-printer-modal')) {
+    document.getElementById('delete-printer-modal').style.display = 'none';
+    _deletePrinterId = null;
+  }
+}
+
+function confirmDeletePrinter() {
+  if (!_deletePrinterId) return;
+  var btn = document.getElementById('del-confirm-btn');
+  btn.disabled = true;
+
+  fetch('/api/printers/' + _deletePrinterId, {method: 'DELETE'})
+    .then(function(r) {
+      if (!r.ok) throw new Error('Delete failed');
+      closeDeleteModal();
+      htmx.trigger('#printer-cards', 'load');
+      htmx.trigger('#printer-tabs', 'load');
+    })
+    .catch(function() {
+      btn.disabled = false;
+    });
 }

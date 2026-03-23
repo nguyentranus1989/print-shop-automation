@@ -70,7 +70,7 @@
         <i data-lucide="sliders-horizontal"></i> View
       </a>
       <button class="btn btn-ghost" style="min-height:32px;padding:0 8px;font-size:12px;color:var(--danger,#e53935);"
-              onclick="if(confirm('Remove {{ p.name }}?')) fetch('/api/printers/{{ p.id }}',{method:'DELETE'}).then(()=>htmx.trigger('#printer-cards','load'))">
+              onclick="openDeleteModal({{ p.id }}, '{{ p.name }}')">
         <i data-lucide="trash-2"></i>
       </button>
     </div>
