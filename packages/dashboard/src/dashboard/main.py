@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncGenerator
@@ -19,9 +20,25 @@ from dashboard.api.analytics import router as analytics_router
 from dashboard.db.database import init_db, SessionLocal
 from dashboard.services.agent_manager import AgentManager
 
+
+def _frozen_base() -> Path:
+    """Return the base directory for bundled data files.
+
+    When running as a PyInstaller .exe the data files are extracted to
+    sys._MEIPASS (the _internal/ folder next to the .exe).  In normal
+    Python the package directory is used as usual.
+    """
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        # PyInstaller unpacks datas into sys._MEIPASS
+        return Path(sys._MEIPASS)  # type: ignore[attr-defined]
+    # Normal Python: data lives next to this source file
+    return Path(__file__).parent
+
+
 # --- Template setup ---------------------------------------------------
-_TEMPLATES_DIR = Path(__file__).parent / "templates"
-_STATIC_DIR = Path(__file__).parent / "static"
+_BASE = _frozen_base()
+_TEMPLATES_DIR = _BASE / "dashboard" / "templates" if getattr(sys, "frozen", False) else _BASE / "templates"
+_STATIC_DIR = _BASE / "dashboard" / "static" if getattr(sys, "frozen", False) else _BASE / "static"
 
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
