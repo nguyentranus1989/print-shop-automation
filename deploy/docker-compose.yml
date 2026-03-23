@@ -1,0 +1,40 @@
+services:
+  dashboard:
+    image: ghcr.io/nguyentranus1989/print-shop-automation:latest
+    container_name: printflow-dashboard
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - printflow-data:/app/data
+    environment:
+      - DASHBOARD_DB_PATH=/app/data/printflow.db
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "printflow-dashboard"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    networks:
+      - webproxy
+
+networks:
+  webproxy:
+    external: true
+
+volumes:
+  printflow-data:
