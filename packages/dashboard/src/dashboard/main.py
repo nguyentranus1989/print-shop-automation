@@ -58,19 +58,19 @@ def _make_app(agent_urls: list[str]) -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse)
     def index(request: Request) -> HTMLResponse:
-        return templates.TemplateResponse("dashboard.html", {"request": request})
+        return templates.TemplateResponse(request=request, name="dashboard.html")
 
     @app.get("/jobs", response_class=HTMLResponse)
     def jobs_page(request: Request) -> HTMLResponse:
-        return templates.TemplateResponse("jobs.html", {"request": request})
+        return templates.TemplateResponse(request=request, name="jobs.html")
 
     @app.get("/printers", response_class=HTMLResponse)
     def printers_page(request: Request) -> HTMLResponse:
-        return templates.TemplateResponse("printers.html", {"request": request})
+        return templates.TemplateResponse(request=request, name="printers.html")
 
     @app.get("/analytics", response_class=HTMLResponse)
     def analytics_page(request: Request) -> HTMLResponse:
-        return templates.TemplateResponse("analytics.html", {"request": request})
+        return templates.TemplateResponse(request=request, name="analytics.html")
 
     @app.get("/health")
     def health() -> dict[str, str]:
