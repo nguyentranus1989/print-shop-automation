@@ -85,14 +85,16 @@ def _detect_from_process() -> Optional[PrinterType]:
                 return None
             while True:
                 name = entry.szExeFile.decode("ascii", errors="replace").lower()
+                # Only match PrintExp processes, not unrelated tools like uv.exe
+                if "printexp" not in name:
+                    if not kernel32.Process32Next(snap, ctypes.byref(entry)):
+                        break
+                    continue
                 if "dtf" in name:
                     return PrinterType.DTF
                 if "uv" in name:
                     return PrinterType.UV
-                if "printexp" in name:
-                    return PrinterType.DTG  # default when process found but type unknown
-                if not kernel32.Process32Next(snap, ctypes.byref(entry)):
-                    break
+                return PrinterType.DTG  # default when process found but type unknown
         finally:
             kernel32.CloseHandle(snap)
     except Exception:
