@@ -65,9 +65,15 @@
       <i data-lucide="layers"></i>
       <span>{{ p.printer_type | upper }}</span>
     </div>
-    <a href="/printers" class="btn btn-ghost" style="min-height:32px;padding:0 12px;font-size:12px;">
-      <i data-lucide="sliders-horizontal"></i> View
-    </a>
+    <div style="display:flex;gap:4px;">
+      <a href="/printers" class="btn btn-ghost" style="min-height:32px;padding:0 12px;font-size:12px;">
+        <i data-lucide="sliders-horizontal"></i> View
+      </a>
+      <button class="btn btn-ghost" style="min-height:32px;padding:0 8px;font-size:12px;color:var(--danger,#e53935);"
+              onclick="if(confirm('Remove {{ p.name }}?')) fetch('/api/printers/{{ p.id }}',{method:'DELETE'}).then(()=>htmx.trigger('#printer-cards','load'))">
+        <i data-lucide="trash-2"></i>
+      </button>
+    </div>
   </div>
 
 </div>
