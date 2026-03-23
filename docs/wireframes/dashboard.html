@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrintFlow — Dashboard</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+
+  <style>
+    :root, [data-theme="dark"] {
+      --bg-deepest: #0a0a0b; --bg-surface: #141416; --bg-card: #1e1e22;
+      --bg-elevated: #2a2a30; --bg-input: #1a1a1e;
+      --color-primary: #3b82f6; --color-primary-hover: #2563eb; --color-primary-muted: #1e3a5f;
+      --color-success: #22c55e; --color-success-muted: #15532e;
+      --color-warning: #eab308; --color-warning-muted: #5c4a0a;
+      --color-danger: #ef4444; --color-danger-muted: #5c1a1a;
+      --text-primary: #f4f4f5; --text-secondary: #a1a1aa; --text-muted: #52525b;
+      --border-default: #27272a; --border-hover: #3f3f46;
+      --font-heading: 'Space Grotesk', system-ui, sans-serif;
+      --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+      --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+      --space-6: 24px; --space-8: 32px; --space-12: 48px;
+      --pico-background-color: var(--bg-deepest);
+      --pico-color: var(--text-primary);
+      --pico-font-family: var(--font-body);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-body); background: var(--bg-deepest);
+      color: var(--text-primary); font-size: 16px; line-height: 1.5; min-height: 100vh;
+    }
+
+    h1, h2, h3, h4 { font-family: var(--font-heading); color: var(--text-primary); margin: 0; }
+
+    /* ---- Layout ---- */
+    .topbar {
+      position: fixed; top: 0; left: 0; right: 0; height: 56px;
+      background: var(--bg-surface); border-bottom: 1px solid var(--border-default);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 var(--space-6); z-index: 100;
+    }
+    .topbar-left { display: flex; align-items: center; gap: var(--space-4); }
+    .topbar-logo {
+      font-family: var(--font-heading); font-size: 20px; font-weight: 700;
+      color: var(--text-primary); display: flex; align-items: center; gap: var(--space-2);
+      text-decoration: none;
+    }
+    .topbar-logo svg { color: var(--color-primary); }
+    .hamburger {
+      display: none; background: none; border: none; color: var(--text-primary);
+      cursor: pointer; padding: var(--space-2);
+    }
+    .printer-indicators { display: flex; gap: 16px; margin-left: 12px; }
+    .printer-ind { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot-green { background: var(--color-success); box-shadow: 0 0 6px var(--color-success); animation: pulse 2s ease-in-out infinite; }
+    .dot-yellow { background: var(--color-warning); box-shadow: 0 0 6px var(--color-warning); animation: pulse 2s ease-in-out infinite; }
+    .dot-red { background: var(--color-danger); box-shadow: 0 0 6px var(--color-danger); animation: pulse 2s ease-in-out infinite; }
+    .dot-gray { background: var(--text-muted); }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .topbar-right { display: flex; align-items: center; gap: var(--space-4); }
+    .topbar-clock { font-family: var(--font-mono); font-size: 14px; color: var(--text-secondary); }
+
+    .sidebar {
+      position: fixed; top: 56px; left: 0; bottom: 0; width: 240px;
+      background: var(--bg-surface); border-right: 1px solid var(--border-default);
+      padding: var(--space-4) 0; display: flex; flex-direction: column; z-index: 90;
+      transition: transform 0.2s ease;
+    }
+    .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-2); }
+    .sidebar-section-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-muted); padding: var(--space-4) var(--space-3) var(--space-2);
+    }
+    .sidebar-link {
+      display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3);
+      border-radius: 6px; color: var(--text-secondary); text-decoration: none; font-size: 14px;
+      font-weight: 500; transition: all 0.15s ease; min-height: 44px; border-left: 3px solid transparent;
+    }
+    .sidebar-link:hover { background: var(--bg-elevated); color: var(--text-primary); }
+    .sidebar-link.active { background: var(--color-primary-muted); color: var(--color-primary); border-left-color: var(--color-primary); }
+    .sidebar-link svg { width: 20px; height: 20px; flex-shrink: 0; }
+    .sidebar-bottom { border-top: 1px solid var(--border-default); padding: var(--space-4) var(--space-2) 0; }
+
+    .main-content {
+      margin-left: 240px; margin-top: 56px; padding: var(--space-6); flex: 1;
+      min-height: calc(100vh - 56px);
+    }
+
+    /* ---- Dashboard-specific ---- */
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-6); }
+    .page-header h1 { font-size: 24px; }
+
+    /* KPI Strip */
+    .kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); margin-bottom: var(--space-6); }
+    .kpi-card {
+      background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 8px;
+      padding: var(--space-4); display: flex; align-items: center; gap: var(--space-4);
+    }
+    .kpi-icon {
+      width: 48px; height: 48px; border-radius: 10px; display: flex;
+      align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .kpi-data {}
+    .kpi-value { font-family: var(--font-mono); font-size: 28px; font-weight: 500; line-height: 1.1; }
+    .kpi-label { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+    .kpi-trend { font-size: 12px; font-family: var(--font-mono); margin-top: 2px; }
+
+    /* Printer Cards Grid */
+    .printer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); margin-bottom: var(--space-6); }
+    .printer-card {
+      background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 8px;
+      padding: var(--space-4); transition: border-color 0.15s ease;
+    }
+    .printer-card:hover { border-color: var(--border-hover); }
+    .printer-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4); }
+    .printer-name { font-family: var(--font-heading); font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: var(--space-2); }
+    .status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+    .status-dot.running { background: var(--color-success); box-shadow: 0 0 8px var(--color-success); animation: pulse 2s ease-in-out infinite; }
+    .status-dot.idle { background: var(--text-muted); }
+    .status-dot.warning { background: var(--color-warning); box-shadow: 0 0 8px var(--color-warning); animation: pulse 2s ease-in-out infinite; }
+    .status-dot.error { background: var(--color-danger); box-shadow: 0 0 8px var(--color-danger); animation: pulse 2s ease-in-out infinite; }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px;
+      border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap;
+    }
+    .badge-success { background: var(--color-success-muted); color: var(--color-success); }
+    .badge-warning { background: var(--color-warning-muted); color: var(--color-warning); }
+    .badge-danger { background: var(--color-danger-muted); color: var(--color-danger); }
+    .badge-neutral { background: var(--bg-elevated); color: var(--text-secondary); }
+
+    .printer-job { margin-bottom: var(--space-4); }
+    .printer-job-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
+    .printer-job-name { font-family: var(--font-mono); font-size: 14px; color: var(--text-primary); margin-bottom: var(--space-2); }
+    .progress-bar { width: 100%; height: 8px; background: var(--bg-elevated); border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+    .progress-fill-success { background: var(--color-success); }
+    .progress-fill-primary { background: var(--color-primary); }
+    .progress-fill-warning { background: var(--color-warning); }
+    .progress-meta { display: flex; justify-content: space-between; margin-top: 4px; font-size: 12px; }
+
+    .printer-stats { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-4); }
+    .printer-stat-label { font-size: 12px; color: var(--text-muted); }
+    .printer-stat-value { font-family: var(--font-mono); font-size: 14px; color: var(--text-primary); }
+
+    /* Ink Levels */
+    .ink-levels { display: flex; gap: var(--space-2); }
+    .ink-bar-wrap { flex: 1; text-align: center; }
+    .ink-bar-label { font-size: 10px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; }
+    .ink-bar-track { width: 100%; height: 48px; background: var(--bg-elevated); border-radius: 4px; position: relative; overflow: hidden; }
+    .ink-bar-fill { position: absolute; bottom: 0; left: 0; right: 0; border-radius: 4px; transition: height 0.5s ease; }
+    .ink-bar-pct { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+
+    /* Bottom section */
+    .bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+    .section-card {
+      background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 8px; padding: var(--space-4);
+    }
+    .section-card-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4);
+      padding-bottom: var(--space-3); border-bottom: 1px solid var(--border-default);
+    }
+    .section-card-title { font-family: var(--font-heading); font-size: 16px; font-weight: 600; }
+
+    /* Alerts */
+    .alert-item {
+      display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) 0;
+      border-bottom: 1px solid var(--border-default);
+    }
+    .alert-item:last-child { border-bottom: none; }
+    .alert-icon {
+      width: 32px; height: 32px; border-radius: 8px; display: flex;
+      align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .alert-text { font-size: 14px; color: var(--text-primary); }
+    .alert-time { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px; }
+
+    /* Activity Feed */
+    .activity-item {
+      display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) 0;
+      border-bottom: 1px solid var(--border-default); font-size: 14px;
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .activity-time { margin-left: auto; font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+
+    /* Responsive */
+    @media (max-width: 1023px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main-content { margin-left: 0; }
+      .hamburger { display: block; }
+      .printer-grid { grid-template-columns: repeat(2, 1fr); }
+      .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 767px) {
+      .printer-grid, .kpi-strip, .bottom-grid { grid-template-columns: 1fr; }
+      .printer-indicators { display: none; }
+      .main-content { padding: var(--space-4); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" onclick="document.querySelector('.sidebar').classList.toggle('open')" aria-label="Toggle menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <a href="dashboard.html" class="topbar-logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></svg>
+        PrintFlow
+      </a>
+      <div class="printer-indicators">
+        <span class="printer-ind"><span class="dot dot-green"></span> DTG</span>
+        <span class="printer-ind"><span class="dot dot-yellow"></span> DTF</span>
+        <span class="printer-ind"><span class="dot dot-green"></span> UV</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-clock" id="clock">14:32</span>
+      <div style="width:32px;height:32px;border-radius:50%;background:var(--bg-elevated);display:flex;align-items:center;justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-nav">
+      <div class="sidebar-section-label">Production</div>
+      <a href="dashboard.html" class="sidebar-link active">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="job-queue.html" class="sidebar-link">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        Job Queue
+      </a>
+      <a href="printer-control.html" class="sidebar-link">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Printer Control
+      </a>
+      <a href="analytics.html" class="sidebar-link">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Analytics
+      </a>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="sidebar-section-label">System</div>
+      <a href="#" class="sidebar-link">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </a>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <div class="page-header">
+      <h1>Production Dashboard</h1>
+      <span style="font-size: 14px; color: var(--text-secondary);">Sunday, March 22, 2026</span>
+    </div>
+
+    <!-- KPI Strip -->
+    <div class="kpi-strip" hx-get="/api/dashboard/kpi" hx-trigger="every 10s" hx-swap="innerHTML">
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background: var(--color-warning-muted);">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="kpi-data">
+          <div class="kpi-value" style="color: var(--color-warning);">8</div>
+          <div class="kpi-label">Pending</div>
+          <div class="kpi-trend" style="color: var(--color-warning);">+3 vs yesterday</div>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background: var(--color-success-muted);">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div class="kpi-data">
+          <div class="kpi-value" style="color: var(--color-success);">2</div>
+          <div class="kpi-label">Printing</div>
+          <div class="kpi-trend" style="color: var(--text-muted);">DTG + UV active</div>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background: var(--color-primary-muted);">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="kpi-data">
+          <div class="kpi-value" style="color: var(--text-primary);">47</div>
+          <div class="kpi-label">Completed</div>
+          <div class="kpi-trend" style="color: var(--color-success);">+12% vs avg</div>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background: var(--color-danger-muted);">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <div class="kpi-data">
+          <div class="kpi-value" style="color: var(--color-danger);">1</div>
+          <div class="kpi-label">Defects</div>
+          <div class="kpi-trend" style="color: var(--color-success);">-2 vs yesterday</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Printer Cards -->
+    <div style="margin-bottom: var(--space-4);">
+      <h2 style="font-size: 18px; margin-bottom: var(--space-4);">Printers</h2>
+    </div>
+
+    <div class="printer-grid">
+
+      <!-- DTG Printer Card -->
+      <div class="printer-card">
+        <div class="printer-card-header">
+          <div class="printer-name">
+            <span class="status-dot running"></span>
+            DTG Printer
+          </div>
+          <span class="badge badge-success">Running</span>
+        </div>
+
+        <div class="printer-job">
+          <div class="printer-job-label">Current Job</div>
+          <div class="printer-job-name">ORD-2847 — Black Tee XL</div>
+          <div class="progress-bar"><div class="progress-fill progress-fill-success" style="width: 68%"></div></div>
+          <div class="progress-meta">
+            <span style="font-family: var(--font-mono); color: var(--color-success);">68%</span>
+            <span style="font-family: var(--font-mono); color: var(--text-muted);">~4 min left</span>
+          </div>
+        </div>
+
+        <div class="printer-stats">
+          <div>
+            <div class="printer-stat-label">Queue</div>
+            <div class="printer-stat-value">5 jobs</div>
+          </div>
+          <div>
+            <div class="printer-stat-label">Today</div>
+            <div class="printer-stat-value">23 done</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: var(--space-2);">
+          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: var(--space-2);">Ink Levels</div>
+          <div class="ink-levels">
+            <div class="ink-bar-wrap">
+              <div class="ink-bar-label" style="color: #00bcd4;">C</div>
+              <div class="ink-bar-track"><div class="ink-bar-fill" style="height:82%;background:#00bcd4;"></div></div>
+              <div class="ink-bar-pct">82%</div>
+            </div>
+            <div class="ink-bar-wrap">
+              <div class="ink-bar-label" style="color: #e91e63;">M</div>
+              <div class="ink-bar-track"><div class="ink-bar-fill" style="height:65%;background:#e91e63;"></div></div>
+              <div class="ink-bar-pct">65%</div>
+            </div>
+            <div class="ink-bar-wrap">
+              <div class="ink-bar-label" style="color: #fdd835;">Y</div>
+              <div class="ink-bar-track"><div class="ink-bar-fill" style="height:91%;background:#fdd835;"></div></div>
+              <div class="ink-bar-pct">91%</div>
+            </div>
+            <div class="ink-bar-wrap">
+              <div class="ink-bar-label" style="color: #9e9e9e;">K</div>
+              <div class="ink-bar-track"><div class="ink-bar-fill" style="height:45%;background:#616161;"></div></div>
+              <div class="ink-bar-pct">45%</div>
+            </div>
+            <div class="ink-bar-wrap">
+              <div class="ink-bar-label" style="color: #f5f5f5;">W</div>
+              <div class="ink-bar-track"><div class="ink-bar-fill" style="height:73%;background:#e0e0e0;"></div></div>
+              <div class="ink-bar-pct">73%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DTF Printer Card -->
+      <div class="printer-card">
+        <div class="printer-card-header">
+          <div class="printer-name">
+            <span class="status-dot warning"></span>
+            DTF Printer
+          </div>
+          <span class="badge badge-warning">Maintenance</span>
+        </div>
+
+        <div class="printer-job">
+          <div class="printer-job-label">Current Job</div>
+          <div class="printer-job-name" style="color: var(--text-muted);">No active job</div>
+          <div class="progress-bar"><div class="progress-fill progress-fill-warning" style="width: 0%"></div></div>
+          <div class="progress-meta">
+            <span style="font-family: var(--font-mono); color: var(--text-muted);">---</span>
+            <span style="font-family: var(--font-mono); color: var(--text-muted);">Awaiting head clean</span>
+          </div>
+        </div>
+
+        <div class="printer-stats">
+          <div>
+            <div class="printer-stat-label">Queue</div>
+            <div class="printer-stat-value">3 jobs</div>
+          </div>
+          <div>
+            <div class="printer-stat-label">Today</div>
+            <div class="printer-stat-value">11 done</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: var(--space-2);">
+          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: var(--space-2);">Ink Levels</div>
+          <div class="ink-levels">
+            <div class="ink-bar-wrap">
+              <div class="ink-bar-label" style="color: #00bcd4;">C</div>
+              <div class="ink-bar-track"><div class="ink-bar-fill" style="height:55%;background:#00bcd4;"></div></div>
+              <div class="ink-bar-pct">55%</div>
+            </div>
+            <div class="ink-bar-wrap">
+              <div class="ink-bar-label" style="color: #e91e63;">M</div>
+              <div class="ink-bar-track"><div class="ink-bar-fill" style="height:28%;background:#e91e63;"></div></div>
+              <div class="ink-bar-pct" style="color:var(--color-danger);">28%</div>
+            </div>
+            <div class="ink-bar-wrap">
+              <div class="ink-bar-label" style="color: #fdd835;">Y</div>
+              <div class="ink-bar-track"><div class="ink-bar-fill" style="height:70%;background:#fdd835;"></div></div>
+              <div class="ink-bar-pct">70%</div>
+            </div>
+            <div class="ink-bar-wrap">
+              <div class="ink-bar-label" style="color: #9e9e9e;">K</div>
+              <div class="ink-bar-track"><div class="ink-bar-fill" style="height:60%;background:#616161;"></div></div>
+              <div class="ink-bar-pct">60%</div>
+            </div>
+            <div class="ink-bar-wrap">
+              <div class="ink-bar-label" style="color: #f5f5f5;">W</div>
+              <div class="ink-bar-track"><div class="ink-bar-fill" style="height:15%;background:#e0e0e0;"></div></div>
+              <div class="ink-bar-pct" style="color:var(--color-danger);">15%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- UV Printer Card -->
+      <div class="printer-card">
+        <div class="printer-card-header">
+          <div class="printer-name">
+            <span class="status-dot running"></span>
+            UV Printer
+          </div>
+          <span class="badge badge-success">Running</span>
+        </div>
+
+        <div class="printer-job">
+          <div class="printer-job-label">Current Job</div>
+          <div class="printer-job-name">ORD-2851 — Phone Case Clear</div>
+          <div class="progress-bar"><div class="progress-fill progress-fill-success" style="width: 34%"></div></div>
+          <div class="progress-meta">
+            <span style="font-family: var(--font-mono); color: var(--color-success);">34%</span>
+            <span style="font-family: var(--font-mono); color: var(--text-muted);">~8 min left</span>
+          </div>
+        </div>
+
+        <div class="printer-stats">
+          <div>
+            <div class="printer-stat-label">Queue</div>
+            <div class="printer-stat-value">2 jobs</div>
+          </div>
+          <div>
+            <div class="printer-stat-label">Today</div>
+            <div class="printer-stat-value">13 done</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: var(--space-2);">
+          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: var(--space-2);">Ink Levels</div>
+          <div class="ink-levels">
+            <div class="ink-bar-wrap">
+              <div class="ink-bar-label" style="color: #00bcd4;">C</div>
+              <div class="ink-bar-track"><div class="ink-bar-fill" style="height:95%;background:#00bcd4;"></div></div>
+              <div class="ink-bar-pct">95%</div>
+            </div>
+            <div class="ink-bar-wrap">
+              <div class="ink-bar-label" style="color: #e91e63;">M</div>
+              <div class="ink-bar-track"><div class="ink-bar-fill" style="height:88%;background:#e91e63;"></div></div>
+              <div class="ink-bar-pct">88%</div>
+            </div>
+            <div class="ink-bar-wrap">
+              <div class="ink-bar-label" style="color: #fdd835;">Y</div>
+              <div class="ink-bar-track"><div class="ink-bar-fill" style="height:77%;background:#fdd835;"></div></div>
+              <div class="ink-bar-pct">77%</div>
+            </div>
+            <div class="ink-bar-wrap">
+              <div class="ink-bar-label" style="color: #9e9e9e;">K</div>
+              <div class="ink-bar-track"><div class="ink-bar-fill" style="height:82%;background:#616161;"></div></div>
+              <div class="ink-bar-pct">82%</div>
+            </div>
+            <div class="ink-bar-wrap">
+              <div class="ink-bar-label" style="color: #f5f5f5;">W</div>
+              <div class="ink-bar-track"><div class="ink-bar-fill" style="height:90%;background:#e0e0e0;"></div></div>
+              <div class="ink-bar-pct">90%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom: Alerts + Activity Feed -->
+    <div class="bottom-grid">
+
+      <!-- Alerts -->
+      <div class="section-card">
+        <div class="section-card-header">
+          <div class="section-card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" stroke-width="2" style="vertical-align: -3px; margin-right: 8px;">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            Alerts
+          </div>
+          <span class="badge badge-danger">2 active</span>
+        </div>
+
+        <div class="alert-item">
+          <div class="alert-icon" style="background: var(--color-danger-muted);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          </div>
+          <div>
+            <div class="alert-text">DTF White ink level critically low (15%)</div>
+            <div class="alert-time">12 min ago</div>
+          </div>
+        </div>
+
+        <div class="alert-item">
+          <div class="alert-icon" style="background: var(--color-warning-muted);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div>
+            <div class="alert-text">DTF head clean overdue (48h since last)</div>
+            <div class="alert-time">2h ago</div>
+          </div>
+        </div>
+
+        <div class="alert-item">
+          <div class="alert-icon" style="background: var(--color-warning-muted);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div>
+            <div class="alert-text">DTG Black ink below 50% — order soon</div>
+            <div class="alert-time">1h ago</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity Feed -->
+      <div class="section-card">
+        <div class="section-card-header">
+          <div class="section-card-title">Recent Activity</div>
+          <a href="job-queue.html" style="font-size: 13px; color: var(--color-primary); text-decoration: none;">View all</a>
+        </div>
+
+        <div class="activity-item">
+          <div class="activity-dot" style="background: var(--color-success);"></div>
+          <span style="color: var(--text-primary);">ORD-2846 completed on DTG</span>
+          <span class="activity-time">2 min ago</span>
+        </div>
+
+        <div class="activity-item">
+          <div class="activity-dot" style="background: var(--color-primary);"></div>
+          <span style="color: var(--text-primary);">ORD-2847 started printing on DTG</span>
+          <span class="activity-time">6 min ago</span>
+        </div>
+
+        <div class="activity-item">
+          <div class="activity-dot" style="background: var(--color-success);"></div>
+          <span style="color: var(--text-primary);">ORD-2845 completed on UV</span>
+          <span class="activity-time">11 min ago</span>
+        </div>
+
+        <div class="activity-item">
+          <div class="activity-dot" style="background: var(--color-warning);"></div>
+          <span style="color: var(--text-primary);">DTF paused for maintenance</span>
+          <span class="activity-time">18 min ago</span>
+        </div>
+
+        <div class="activity-item">
+          <div class="activity-dot" style="background: var(--color-danger);"></div>
+          <span style="color: var(--text-primary);">ORD-2839 marked as defect (misalignment)</span>
+          <span class="activity-time">45 min ago</span>
+        </div>
+
+        <div class="activity-item">
+          <div class="activity-dot" style="background: var(--color-primary);"></div>
+          <span style="color: var(--text-primary);">5 new orders imported from PodFactory</span>
+          <span class="activity-time">1h ago</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+    updateClock();
+    setInterval(updateClock, 30000);
+  </script>
+</body>
+</html>

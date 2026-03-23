@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrintFlow — Analytics</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+
+  <style>
+    :root, [data-theme="dark"] {
+      --bg-deepest: #0a0a0b; --bg-surface: #141416; --bg-card: #1e1e22;
+      --bg-elevated: #2a2a30; --bg-input: #1a1a1e;
+      --color-primary: #3b82f6; --color-primary-hover: #2563eb; --color-primary-muted: #1e3a5f;
+      --color-success: #22c55e; --color-success-muted: #15532e;
+      --color-warning: #eab308; --color-warning-muted: #5c4a0a;
+      --color-danger: #ef4444; --color-danger-muted: #5c1a1a;
+      --text-primary: #f4f4f5; --text-secondary: #a1a1aa; --text-muted: #52525b;
+      --border-default: #27272a; --border-hover: #3f3f46;
+      --font-heading: 'Space Grotesk', system-ui, sans-serif;
+      --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+      --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+      --space-6: 24px; --space-8: 32px; --space-12: 48px;
+      --pico-background-color: var(--bg-deepest);
+      --pico-color: var(--text-primary);
+      --pico-font-family: var(--font-body);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-body); background: var(--bg-deepest); color: var(--text-primary); font-size: 16px; line-height: 1.5; }
+    h1, h2, h3, h4 { font-family: var(--font-heading); color: var(--text-primary); margin: 0; }
+
+    /* Layout */
+    .topbar { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: var(--bg-surface); border-bottom: 1px solid var(--border-default); display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-6); z-index: 100; }
+    .topbar-left { display: flex; align-items: center; gap: var(--space-4); }
+    .topbar-logo { font-family: var(--font-heading); font-size: 20px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: var(--space-2); text-decoration: none; }
+    .topbar-logo svg { color: var(--color-primary); }
+    .hamburger { display: none; background: none; border: none; color: var(--text-primary); cursor: pointer; padding: var(--space-2); }
+    .printer-indicators { display: flex; gap: 16px; margin-left: 12px; }
+    .printer-ind { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot-green { background: var(--color-success); box-shadow: 0 0 6px var(--color-success); animation: pulse 2s ease-in-out infinite; }
+    .dot-yellow { background: var(--color-warning); box-shadow: 0 0 6px var(--color-warning); animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .topbar-right { display: flex; align-items: center; gap: var(--space-4); }
+    .topbar-clock { font-family: var(--font-mono); font-size: 14px; color: var(--text-secondary); }
+
+    .sidebar { position: fixed; top: 56px; left: 0; bottom: 0; width: 240px; background: var(--bg-surface); border-right: 1px solid var(--border-default); padding: var(--space-4) 0; display: flex; flex-direction: column; z-index: 90; transition: transform 0.2s ease; }
+    .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-2); }
+    .sidebar-section-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); padding: var(--space-4) var(--space-3) var(--space-2); }
+    .sidebar-link { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-radius: 6px; color: var(--text-secondary); text-decoration: none; font-size: 14px; font-weight: 500; transition: all 0.15s ease; min-height: 44px; border-left: 3px solid transparent; }
+    .sidebar-link:hover { background: var(--bg-elevated); color: var(--text-primary); }
+    .sidebar-link.active { background: var(--color-primary-muted); color: var(--color-primary); border-left-color: var(--color-primary); }
+    .sidebar-link svg { width: 20px; height: 20px; flex-shrink: 0; }
+    .sidebar-bottom { border-top: 1px solid var(--border-default); padding: var(--space-4) var(--space-2) 0; }
+
+    .main-content { margin-left: 240px; margin-top: 56px; padding: var(--space-6); min-height: calc(100vh - 56px); }
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-6); flex-wrap: wrap; gap: var(--space-3); }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 40px; padding: var(--space-2) var(--space-4); border-radius: 8px; border: 1px solid transparent; font-family: var(--font-body); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s ease; text-decoration: none; }
+    .btn-secondary { background: var(--bg-elevated); color: var(--text-primary); border-color: var(--border-default); }
+    .btn-secondary:hover { background: var(--border-hover); }
+    .btn-secondary.active { background: var(--color-primary-muted); color: var(--color-primary); border-color: var(--color-primary); }
+
+    /* ---- Analytics specific ---- */
+
+    /* Time range selector */
+    .time-range { display: flex; gap: var(--space-2); }
+    .time-btn {
+      padding: var(--space-2) var(--space-3); border-radius: 6px; border: 1px solid var(--border-default);
+      background: var(--bg-card); color: var(--text-secondary); font-family: var(--font-body);
+      font-size: 13px; cursor: pointer; transition: all 0.15s ease; min-height: 36px;
+    }
+    .time-btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
+    .time-btn.active { background: var(--color-primary-muted); color: var(--color-primary); border-color: var(--color-primary); }
+
+    /* Summary KPI strip */
+    .kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); margin-bottom: var(--space-6); }
+    .kpi-card {
+      background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 8px;
+      padding: var(--space-4);
+    }
+    .kpi-value { font-family: var(--font-mono); font-size: 28px; font-weight: 500; line-height: 1.1; }
+    .kpi-label { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+    .kpi-change { font-size: 12px; font-family: var(--font-mono); margin-top: 4px; }
+    .kpi-up { color: var(--color-success); }
+    .kpi-down { color: var(--color-danger); }
+
+    /* Chart grid */
+    .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4); }
+
+    .chart-card {
+      background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 8px;
+      padding: var(--space-4);
+    }
+    .chart-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4);
+      padding-bottom: var(--space-3); border-bottom: 1px solid var(--border-default);
+    }
+    .chart-title { font-family: var(--font-heading); font-size: 16px; font-weight: 600; }
+    .chart-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    /* Placeholder chart areas with CSS-drawn charts */
+    .chart-area {
+      height: 220px; position: relative; display: flex; align-items: flex-end;
+      gap: 2px; padding-top: 20px;
+    }
+
+    /* Bar chart */
+    .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 200px; padding: 0 8px; width: 100%; }
+    .bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .bar {
+      width: 100%; max-width: 40px; border-radius: 4px 4px 0 0; transition: height 0.5s ease;
+      min-height: 4px;
+    }
+    .bar-label { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+
+    /* Line chart placeholder */
+    .line-chart-area {
+      height: 200px; position: relative; border-left: 1px solid var(--border-default);
+      border-bottom: 1px solid var(--border-default); margin: 0 8px;
+    }
+    .line-chart-svg { width: 100%; height: 100%; }
+
+    /* Donut chart */
+    .donut-chart {
+      width: 180px; height: 180px; margin: 10px auto; position: relative;
+    }
+    .donut-chart svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .donut-center {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      text-align: center;
+    }
+    .donut-center-value { font-family: var(--font-mono); font-size: 28px; font-weight: 500; }
+    .donut-center-label { font-size: 12px; color: var(--text-muted); }
+
+    /* Stacked bar chart */
+    .stacked-bar-chart { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 8px; }
+    .stacked-row {
+      display: flex; align-items: center; gap: var(--space-3);
+    }
+    .stacked-label { width: 40px; font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); text-align: right; flex-shrink: 0; }
+    .stacked-track {
+      flex: 1; height: 24px; background: var(--bg-elevated); border-radius: 4px;
+      display: flex; overflow: hidden;
+    }
+    .stacked-segment { height: 100%; transition: width 0.5s ease; }
+    .stacked-value { width: 50px; font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); text-align: right; flex-shrink: 0; }
+
+    /* Legend */
+    .chart-legend { display: flex; gap: var(--space-4); margin-top: var(--space-3); flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+    /* Y axis labels for bar charts */
+    .y-axis { position: absolute; left: -8px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: space-between; }
+    .y-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-align: right; width: 30px; }
+
+    /* Grid lines */
+    .grid-lines { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+    .grid-line { width: 100%; height: 1px; background: var(--border-default); opacity: 0.4; }
+
+    /* Printer utilization donut legend */
+    .donut-legend { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-4); }
+    .donut-legend-item {
+      display: flex; align-items: center; justify-content: space-between; padding: var(--space-2) var(--space-3);
+      background: var(--bg-elevated); border-radius: 6px;
+    }
+    .donut-legend-left { display: flex; align-items: center; gap: var(--space-2); }
+    .donut-legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+    .donut-legend-name { font-size: 13px; color: var(--text-primary); }
+    .donut-legend-pct { font-family: var(--font-mono); font-size: 14px; font-weight: 500; }
+
+    /* Responsive */
+    @media (max-width: 1023px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main-content { margin-left: 0; }
+      .hamburger { display: block; }
+      .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 767px) {
+      .chart-grid, .kpi-strip { grid-template-columns: 1fr; }
+      .printer-indicators { display: none; }
+      .main-content { padding: var(--space-4); }
+      .time-range { flex-wrap: wrap; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" onclick="document.querySelector('.sidebar').classList.toggle('open')" aria-label="Toggle menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <a href="dashboard.html" class="topbar-logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></svg>
+        PrintFlow
+      </a>
+      <div class="printer-indicators">
+        <span class="printer-ind"><span class="dot dot-green"></span> DTG</span>
+        <span class="printer-ind"><span class="dot dot-yellow"></span> DTF</span>
+        <span class="printer-ind"><span class="dot dot-green"></span> UV</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-clock" id="clock">14:32</span>
+      <div style="width:32px;height:32px;border-radius:50%;background:var(--bg-elevated);display:flex;align-items:center;justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-nav">
+      <div class="sidebar-section-label">Production</div>
+      <a href="dashboard.html" class="sidebar-link">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="job-queue.html" class="sidebar-link">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        Job Queue
+      </a>
+      <a href="printer-control.html" class="sidebar-link">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Printer Control
+      </a>
+      <a href="analytics.html" class="sidebar-link active">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Analytics
+      </a>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="sidebar-section-label">System</div>
+      <a href="#" class="sidebar-link">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </a>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1>Analytics</h1>
+        <p style="font-size: 14px; color: var(--text-secondary); margin-top: 4px;">Production performance and cost tracking</p>
+      </div>
+      <div class="time-range">
+        <button class="time-btn">Today</button>
+        <button class="time-btn active">This Week</button>
+        <button class="time-btn">This Month</button>
+        <button class="time-btn">Custom</button>
+      </div>
+    </div>
+
+    <!-- KPI Summary Strip -->
+    <div class="kpi-strip">
+      <div class="kpi-card">
+        <div class="kpi-value" style="color: var(--text-primary);">312</div>
+        <div class="kpi-label">Total Jobs</div>
+        <div class="kpi-change kpi-up">+18% vs last week</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value" style="color: var(--color-success);">96.2%</div>
+        <div class="kpi-label">Success Rate</div>
+        <div class="kpi-change kpi-up">+1.3% vs last week</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value" style="color: var(--color-primary);">$2.47</div>
+        <div class="kpi-label">Avg Cost / Print</div>
+        <div class="kpi-change kpi-down">+$0.12 vs last week</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value" style="color: var(--color-warning);">72%</div>
+        <div class="kpi-label">Avg Utilization</div>
+        <div class="kpi-change kpi-up">+5% vs last week</div>
+      </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="chart-grid">
+
+      <!-- Jobs per Day (Bar Chart) -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Jobs per Day</div>
+            <div class="chart-subtitle">This week vs last week</div>
+          </div>
+        </div>
+        <div style="position: relative; padding-left: 38px;">
+          <div class="y-axis">
+            <span class="y-label">60</span>
+            <span class="y-label">45</span>
+            <span class="y-label">30</span>
+            <span class="y-label">15</span>
+            <span class="y-label">0</span>
+          </div>
+          <div style="position: relative;">
+            <div class="grid-lines">
+              <div class="grid-line"></div>
+              <div class="grid-line"></div>
+              <div class="grid-line"></div>
+              <div class="grid-line"></div>
+              <div class="grid-line"></div>
+            </div>
+            <div class="bar-chart">
+              <div class="bar-group">
+                <div style="display:flex;gap:3px;align-items:flex-end;height:200px;width:100%;">
+                  <div class="bar" style="height:60%;background:var(--color-primary);flex:1;opacity:0.4;"></div>
+                  <div class="bar" style="height:75%;background:var(--color-primary);flex:1;"></div>
+                </div>
+                <div class="bar-label">Mon</div>
+              </div>
+              <div class="bar-group">
+                <div style="display:flex;gap:3px;align-items:flex-end;height:200px;width:100%;">
+                  <div class="bar" style="height:53%;background:var(--color-primary);flex:1;opacity:0.4;"></div>
+                  <div class="bar" style="height:80%;background:var(--color-primary);flex:1;"></div>
+                </div>
+                <div class="bar-label">Tue</div>
+              </div>
+              <div class="bar-group">
+                <div style="display:flex;gap:3px;align-items:flex-end;height:200px;width:100%;">
+                  <div class="bar" style="height:70%;background:var(--color-primary);flex:1;opacity:0.4;"></div>
+                  <div class="bar" style="height:67%;background:var(--color-primary);flex:1;"></div>
+                </div>
+                <div class="bar-label">Wed</div>
+              </div>
+              <div class="bar-group">
+                <div style="display:flex;gap:3px;align-items:flex-end;height:200px;width:100%;">
+                  <div class="bar" style="height:45%;background:var(--color-primary);flex:1;opacity:0.4;"></div>
+                  <div class="bar" style="height:90%;background:var(--color-primary);flex:1;"></div>
+                </div>
+                <div class="bar-label">Thu</div>
+              </div>
+              <div class="bar-group">
+                <div style="display:flex;gap:3px;align-items:flex-end;height:200px;width:100%;">
+                  <div class="bar" style="height:80%;background:var(--color-primary);flex:1;opacity:0.4;"></div>
+                  <div class="bar" style="height:85%;background:var(--color-primary);flex:1;"></div>
+                </div>
+                <div class="bar-label">Fri</div>
+              </div>
+              <div class="bar-group">
+                <div style="display:flex;gap:3px;align-items:flex-end;height:200px;width:100%;">
+                  <div class="bar" style="height:35%;background:var(--color-primary);flex:1;opacity:0.4;"></div>
+                  <div class="bar" style="height:50%;background:var(--color-primary);flex:1;"></div>
+                </div>
+                <div class="bar-label">Sat</div>
+              </div>
+              <div class="bar-group">
+                <div style="display:flex;gap:3px;align-items:flex-end;height:200px;width:100%;">
+                  <div class="bar" style="height:20%;background:var(--color-primary);flex:1;opacity:0.4;"></div>
+                  <div class="bar" style="height:40%;background:var(--color-primary);flex:1;"></div>
+                </div>
+                <div class="bar-label">Sun</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--color-primary); opacity:0.4;"></div> Last week</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--color-primary);"></div> This week</div>
+        </div>
+      </div>
+
+      <!-- Machine Utilization (Donut Chart) -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Machine Utilization</div>
+            <div class="chart-subtitle">Active printing time this week</div>
+          </div>
+        </div>
+        <div class="donut-chart">
+          <svg viewBox="0 0 36 36">
+            <!-- Background circle -->
+            <circle cx="18" cy="18" r="14" fill="none" stroke="var(--bg-elevated)" stroke-width="4"/>
+            <!-- DTG: 78% = 0.78 * 87.96 (circumference segment)  -->
+            <circle cx="18" cy="18" r="14" fill="none" stroke="var(--color-primary)" stroke-width="4"
+              stroke-dasharray="68.61 19.35" stroke-dashoffset="0"/>
+            <!-- DTF: 55% -->
+            <circle cx="18" cy="18" r="10" fill="none" stroke="var(--color-warning)" stroke-width="4"
+              stroke-dasharray="34.56 28.27" stroke-dashoffset="0"/>
+            <!-- UV: 82% -->
+            <circle cx="18" cy="18" r="6" fill="none" stroke="var(--color-success)" stroke-width="4"
+              stroke-dasharray="30.91 6.77" stroke-dashoffset="0"/>
+          </svg>
+          <div class="donut-center">
+            <div class="donut-center-value">72%</div>
+            <div class="donut-center-label">Average</div>
+          </div>
+        </div>
+        <div class="donut-legend">
+          <div class="donut-legend-item">
+            <div class="donut-legend-left">
+              <div class="donut-legend-dot" style="background:var(--color-primary);"></div>
+              <span class="donut-legend-name">DTG Printer</span>
+            </div>
+            <span class="donut-legend-pct" style="color:var(--color-primary);">78%</span>
+          </div>
+          <div class="donut-legend-item">
+            <div class="donut-legend-left">
+              <div class="donut-legend-dot" style="background:var(--color-warning);"></div>
+              <span class="donut-legend-name">DTF Printer</span>
+            </div>
+            <span class="donut-legend-pct" style="color:var(--color-warning);">55%</span>
+          </div>
+          <div class="donut-legend-item">
+            <div class="donut-legend-left">
+              <div class="donut-legend-dot" style="background:var(--color-success);"></div>
+              <span class="donut-legend-name">UV Printer</span>
+            </div>
+            <span class="donut-legend-pct" style="color:var(--color-success);">82%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cost per Print (Line Chart) -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Cost per Print</div>
+            <div class="chart-subtitle">Ink + media cost trend</div>
+          </div>
+        </div>
+        <div style="position: relative; padding-left: 38px;">
+          <div class="y-axis" style="height: 200px;">
+            <span class="y-label">$4.0</span>
+            <span class="y-label">$3.0</span>
+            <span class="y-label">$2.0</span>
+            <span class="y-label">$1.0</span>
+            <span class="y-label">$0</span>
+          </div>
+          <div class="line-chart-area">
+            <svg class="line-chart-svg" viewBox="0 0 300 200" preserveAspectRatio="none">
+              <!-- Grid lines -->
+              <line x1="0" y1="50" x2="300" y2="50" stroke="var(--border-default)" stroke-width="0.5" opacity="0.4"/>
+              <line x1="0" y1="100" x2="300" y2="100" stroke="var(--border-default)" stroke-width="0.5" opacity="0.4"/>
+              <line x1="0" y1="150" x2="300" y2="150" stroke="var(--border-default)" stroke-width="0.5" opacity="0.4"/>
+
+              <!-- Area fill -->
+              <path d="M0,120 L43,110 L86,125 L129,105 L172,95 L215,100 L258,85 L300,90 L300,200 L0,200 Z"
+                fill="var(--color-primary)" opacity="0.1"/>
+
+              <!-- Line -->
+              <polyline points="0,120 43,110 86,125 129,105 172,95 215,100 258,85 300,90"
+                fill="none" stroke="var(--color-primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+              <!-- Data points -->
+              <circle cx="0" cy="120" r="3" fill="var(--color-primary)"/>
+              <circle cx="43" cy="110" r="3" fill="var(--color-primary)"/>
+              <circle cx="86" cy="125" r="3" fill="var(--color-primary)"/>
+              <circle cx="129" cy="105" r="3" fill="var(--color-primary)"/>
+              <circle cx="172" cy="95" r="3" fill="var(--color-primary)"/>
+              <circle cx="215" cy="100" r="3" fill="var(--color-primary)"/>
+              <circle cx="258" cy="85" r="4" fill="var(--bg-card)" stroke="var(--color-primary)" stroke-width="2"/>
+              <circle cx="300" cy="90" r="3" fill="var(--color-primary)"/>
+            </svg>
+          </div>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding: 8px 38px 0; ">
+          <span class="bar-label">Mon</span>
+          <span class="bar-label">Tue</span>
+          <span class="bar-label">Wed</span>
+          <span class="bar-label">Thu</span>
+          <span class="bar-label">Fri</span>
+          <span class="bar-label">Sat</span>
+          <span class="bar-label">Sun</span>
+        </div>
+      </div>
+
+      <!-- Ink Consumption (Stacked Bars) -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Ink Consumption</div>
+            <div class="chart-subtitle">ml used per color channel this week</div>
+          </div>
+        </div>
+        <div class="stacked-bar-chart" style="padding-top: var(--space-2);">
+          <div class="stacked-row">
+            <div class="stacked-label">DTG</div>
+            <div class="stacked-track">
+              <div class="stacked-segment" style="width:22%;background:#00bcd4;"></div>
+              <div class="stacked-segment" style="width:18%;background:#e91e63;"></div>
+              <div class="stacked-segment" style="width:15%;background:#fdd835;"></div>
+              <div class="stacked-segment" style="width:25%;background:#616161;"></div>
+              <div class="stacked-segment" style="width:20%;background:#bdbdbd;"></div>
+            </div>
+            <div class="stacked-value">284 ml</div>
+          </div>
+          <div class="stacked-row">
+            <div class="stacked-label">DTF</div>
+            <div class="stacked-track">
+              <div class="stacked-segment" style="width:20%;background:#00bcd4;"></div>
+              <div class="stacked-segment" style="width:25%;background:#e91e63;"></div>
+              <div class="stacked-segment" style="width:12%;background:#fdd835;"></div>
+              <div class="stacked-segment" style="width:18%;background:#616161;"></div>
+              <div class="stacked-segment" style="width:25%;background:#bdbdbd;"></div>
+            </div>
+            <div class="stacked-value">198 ml</div>
+          </div>
+          <div class="stacked-row">
+            <div class="stacked-label">UV</div>
+            <div class="stacked-track">
+              <div class="stacked-segment" style="width:28%;background:#00bcd4;"></div>
+              <div class="stacked-segment" style="width:22%;background:#e91e63;"></div>
+              <div class="stacked-segment" style="width:18%;background:#fdd835;"></div>
+              <div class="stacked-segment" style="width:20%;background:#616161;"></div>
+              <div class="stacked-segment" style="width:12%;background:#bdbdbd;"></div>
+            </div>
+            <div class="stacked-value">241 ml</div>
+          </div>
+        </div>
+        <div class="chart-legend" style="margin-top: var(--space-4);">
+          <div class="legend-item"><div class="legend-dot" style="background:#00bcd4;"></div> Cyan</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#e91e63;"></div> Magenta</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#fdd835;"></div> Yellow</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#616161;"></div> Black</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#bdbdbd;"></div> White</div>
+        </div>
+
+        <!-- Totals row -->
+        <div style="margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border-default); display: flex; justify-content: space-between;">
+          <span style="font-size: 13px; color: var(--text-secondary);">Total ink this week</span>
+          <span style="font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--text-primary);">723 ml</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+    updateClock();
+    setInterval(updateClock, 30000);
+
+    // Time range buttons
+    document.querySelectorAll('.time-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

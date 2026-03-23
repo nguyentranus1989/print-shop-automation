@@ -1,0 +1,19 @@
+[agent]
+name = "DTG-Printer-01"
+poll_interval_seconds = 5
+
+[printer]
+type = "auto"  # auto, dtg, dtf, uv
+
+[printexp]
+exe_path = "C:\\PrintExp_5.7.7.1.12_MULTIWS\\PrintExp.exe"
+tcp_port = 9100
+memory_offset = 0x016CDB
+
+[network]
+port = 8080
+dashboard_url = "http://192.168.1.100:8000"
+
+[files]
+nas_path = "\\\\nas\\prn-files"
+temp_path = "C:\\Hstemp"

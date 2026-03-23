@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Analytics — PrintFlow{% endblock %}
+{% block content %}
+<h1>Analytics</h1>
+
+<section>
+  <h2>Today</h2>
+  <div id="analytics-summary"
+       hx-get="/api/analytics/summary"
+       hx-trigger="load, every 30s"
+       hx-swap="innerHTML">
+    <p aria-busy="true">Loading...</p>
+  </div>
+</section>
+
+<section>
+  <h2>Throughput (last 24h)</h2>
+  <div id="throughput"
+       hx-get="/api/analytics/throughput"
+       hx-trigger="load"
+       hx-swap="innerHTML">
+    <p aria-busy="true">Loading...</p>
+  </div>
+</section>
+
+<section>
+  <h2>Ink Levels</h2>
+  <div id="ink-chart"
+       hx-get="/api/analytics/ink"
+       hx-trigger="load, every 60s"
+       hx-swap="innerHTML">
+    <p aria-busy="true">Loading...</p>
+  </div>
+</section>
+{% endblock %}

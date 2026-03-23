@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrintFlow — Layout Shell</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Pico CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+
+  <!-- HTMX (structural only for wireframe) -->
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+
+  <style>
+    /* ========================================
+       PrintFlow Design System — CSS Variables
+       ======================================== */
+    :root, [data-theme="dark"] {
+      /* Backgrounds */
+      --bg-deepest: #0a0a0b;
+      --bg-surface: #141416;
+      --bg-card: #1e1e22;
+      --bg-elevated: #2a2a30;
+      --bg-input: #1a1a1e;
+
+      /* Semantic */
+      --color-primary: #3b82f6;
+      --color-primary-hover: #2563eb;
+      --color-primary-muted: #1e3a5f;
+      --color-success: #22c55e;
+      --color-success-muted: #15532e;
+      --color-warning: #eab308;
+      --color-warning-muted: #5c4a0a;
+      --color-danger: #ef4444;
+      --color-danger-muted: #5c1a1a;
+
+      /* Text */
+      --text-primary: #f4f4f5;
+      --text-secondary: #a1a1aa;
+      --text-muted: #52525b;
+
+      /* Border */
+      --border-default: #27272a;
+      --border-hover: #3f3f46;
+
+      /* Typography */
+      --font-heading: 'Space Grotesk', system-ui, sans-serif;
+      --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+
+      /* Spacing */
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-12: 48px;
+
+      /* Pico overrides */
+      --pico-background-color: var(--bg-deepest);
+      --pico-card-background-color: var(--bg-card);
+      --pico-card-border-color: var(--border-default);
+      --pico-color: var(--text-primary);
+      --pico-muted-color: var(--text-secondary);
+      --pico-primary: var(--color-primary);
+      --pico-primary-hover: var(--color-primary-hover);
+      --pico-form-element-background-color: var(--bg-input);
+      --pico-form-element-border-color: var(--border-default);
+      --pico-font-family: var(--font-body);
+    }
+
+    /* ========================================
+       Reset & Base
+       ======================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-deepest);
+      color: var(--text-primary);
+      font-size: 16px;
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: var(--font-heading);
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    h1 { font-size: 28px; font-weight: 700; line-height: 1.2; }
+    h2 { font-size: 24px; font-weight: 700; line-height: 1.3; }
+    h3 { font-size: 20px; font-weight: 500; line-height: 1.3; }
+
+    /* ========================================
+       Layout: Top Bar + Sidebar + Main
+       ======================================== */
+    .app-layout {
+      display: flex;
+      flex: 1;
+      min-height: 100vh;
+    }
+
+    /* --- Top Bar --- */
+    .topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-default);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--space-6);
+      z-index: 100;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+    }
+
+    .topbar-logo {
+      font-family: var(--font-heading);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      text-decoration: none;
+    }
+
+    .topbar-logo svg {
+      color: var(--color-primary);
+    }
+
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-primary);
+      cursor: pointer;
+      padding: var(--space-2);
+    }
+
+    .topbar-center {
+      display: flex;
+      align-items: center;
+      gap: var(--space-6);
+    }
+
+    .printer-indicator {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-family: var(--font-body);
+    }
+
+    .printer-indicator .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot-green {
+      background: var(--color-success);
+      box-shadow: 0 0 6px var(--color-success);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .dot-yellow {
+      background: var(--color-warning);
+      box-shadow: 0 0 6px var(--color-warning);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .dot-red {
+      background: var(--color-danger);
+      box-shadow: 0 0 6px var(--color-danger);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .dot-gray {
+      background: var(--text-muted);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+    }
+
+    .topbar-clock {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--text-secondary);
+      min-width: 60px;
+    }
+
+    /* --- Sidebar --- */
+    .sidebar {
+      position: fixed;
+      top: 56px;
+      left: 0;
+      bottom: 0;
+      width: 240px;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-default);
+      padding: var(--space-4) 0;
+      display: flex;
+      flex-direction: column;
+      z-index: 90;
+      overflow-y: auto;
+      transition: transform 0.2s ease;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+      padding: 0 var(--space-2);
+    }
+
+    .sidebar-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      padding: var(--space-4) var(--space-3) var(--space-2);
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-3);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+      min-height: 44px;
+      border-left: 3px solid transparent;
+    }
+
+    .sidebar-link:hover {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+    }
+
+    .sidebar-link.active {
+      background: var(--color-primary-muted);
+      color: var(--color-primary);
+      border-left-color: var(--color-primary);
+    }
+
+    .sidebar-link svg {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-bottom {
+      border-top: 1px solid var(--border-default);
+      padding: var(--space-4) var(--space-2) 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+
+    /* --- Main Content --- */
+    .main-content {
+      margin-left: 240px;
+      margin-top: 56px;
+      padding: var(--space-6);
+      flex: 1;
+      min-height: calc(100vh - 56px);
+      background: var(--bg-deepest);
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-6);
+    }
+
+    .page-header h1 {
+      font-size: 24px;
+    }
+
+    /* ========================================
+       Shared Components
+       ======================================== */
+
+    /* Status Badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: var(--font-body);
+      white-space: nowrap;
+    }
+
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .badge-success { background: var(--color-success-muted); color: var(--color-success); }
+    .badge-success .badge-dot { background: var(--color-success); }
+
+    .badge-warning { background: var(--color-warning-muted); color: var(--color-warning); }
+    .badge-warning .badge-dot { background: var(--color-warning); }
+
+    .badge-danger { background: var(--color-danger-muted); color: var(--color-danger); }
+    .badge-danger .badge-dot { background: var(--color-danger); }
+
+    .badge-primary { background: var(--color-primary-muted); color: var(--color-primary); }
+    .badge-primary .badge-dot { background: var(--color-primary); }
+
+    .badge-neutral { background: var(--bg-elevated); color: var(--text-secondary); }
+    .badge-neutral .badge-dot { background: var(--text-muted); }
+
+    /* Card */
+    .pf-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      border-radius: 8px;
+      padding: var(--space-4);
+    }
+
+    .pf-card:hover {
+      border-color: var(--border-hover);
+    }
+
+    .pf-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-3);
+    }
+
+    .pf-card-title {
+      font-family: var(--font-heading);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      min-height: 48px;
+      padding: var(--space-3) var(--space-4);
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+
+    .btn-primary {
+      background: var(--color-primary);
+      color: #fff;
+      border-color: var(--color-primary);
+    }
+    .btn-primary:hover { background: var(--color-primary-hover); }
+
+    .btn-danger {
+      background: var(--color-danger);
+      color: #fff;
+      border-color: var(--color-danger);
+    }
+    .btn-danger:hover { background: #dc2626; }
+
+    .btn-success {
+      background: var(--color-success);
+      color: #000;
+      border-color: var(--color-success);
+    }
+    .btn-success:hover { background: #16a34a; }
+
+    .btn-warning {
+      background: var(--color-warning);
+      color: #000;
+      border-color: var(--color-warning);
+    }
+    .btn-warning:hover { background: #ca8a04; }
+
+    .btn-secondary {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border-color: var(--border-default);
+    }
+    .btn-secondary:hover { background: var(--border-hover); }
+
+    .btn-sm {
+      min-height: 32px;
+      padding: var(--space-1) var(--space-3);
+      font-size: 13px;
+      border-radius: 6px;
+    }
+
+    .btn-lg {
+      min-height: 56px;
+      padding: var(--space-4) var(--space-6);
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .btn-icon {
+      min-width: 48px;
+      padding: var(--space-2);
+    }
+
+    /* Progress Bar */
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: var(--bg-elevated);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+
+    .progress-fill-success { background: var(--color-success); }
+    .progress-fill-primary { background: var(--color-primary); }
+    .progress-fill-warning { background: var(--color-warning); }
+    .progress-fill-danger { background: var(--color-danger); }
+
+    /* Data text (monospace) */
+    .data-text {
+      font-family: var(--font-mono);
+      font-size: 14px;
+    }
+
+    .data-text-lg {
+      font-family: var(--font-mono);
+      font-size: 20px;
+      font-weight: 500;
+    }
+
+    .data-text-xl {
+      font-family: var(--font-mono);
+      font-size: 32px;
+      font-weight: 500;
+    }
+
+    /* KPI Card */
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      border-radius: 8px;
+      padding: var(--space-4);
+      text-align: center;
+    }
+
+    .kpi-value {
+      font-family: var(--font-mono);
+      font-size: 32px;
+      font-weight: 500;
+      line-height: 1.1;
+    }
+
+    .kpi-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: var(--space-1);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Grid helpers */
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-4);
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-4);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-4);
+    }
+
+    /* ========================================
+       Responsive
+       ======================================== */
+    @media (max-width: 1023px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .main-content {
+        margin-left: 0;
+      }
+      .hamburger {
+        display: block;
+      }
+      .grid-3 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 767px) {
+      .grid-3, .grid-4, .grid-2 {
+        grid-template-columns: 1fr;
+      }
+      .topbar-center {
+        display: none;
+      }
+      .main-content {
+        padding: var(--space-4);
+      }
+    }
+
+    /* ========================================
+       Reduced motion
+       ======================================== */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============ TOP BAR ============ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" onclick="document.querySelector('.sidebar').classList.toggle('open')" aria-label="Toggle menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <a href="dashboard.html" class="topbar-logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="6" y="3" width="12" height="18" rx="2"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/>
+        </svg>
+        PrintFlow
+      </a>
+
+      <!-- Printer status indicators in topbar -->
+      <div style="display:flex; gap: 16px; margin-left: 12px;">
+        <span class="printer-indicator"><span class="dot dot-green"></span> DTG</span>
+        <span class="printer-indicator"><span class="dot dot-yellow"></span> DTF</span>
+        <span class="printer-indicator"><span class="dot dot-green"></span> UV</span>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <span class="topbar-clock" id="clock">14:32</span>
+      <div style="width:32px;height:32px;border-radius:50%;background:var(--bg-elevated);display:flex;align-items:center;justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-layout">
+    <!-- ============ SIDEBAR ============ -->
+    <nav class="sidebar" aria-label="Main navigation">
+      <div class="sidebar-nav">
+        <div class="sidebar-section-label">Production</div>
+
+        <a href="dashboard.html" class="sidebar-link active">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+          </svg>
+          Dashboard
+        </a>
+
+        <a href="job-queue.html" class="sidebar-link">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+          Job Queue
+        </a>
+
+        <a href="printer-control.html" class="sidebar-link">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          Printer Control
+        </a>
+
+        <a href="analytics.html" class="sidebar-link">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+          Analytics
+        </a>
+      </div>
+
+      <div class="sidebar-bottom">
+        <div class="sidebar-section-label">System</div>
+        <a href="#" class="sidebar-link">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          Settings
+        </a>
+      </div>
+    </nav>
+
+    <!-- ============ MAIN CONTENT ============ -->
+    <main class="main-content">
+      <div class="page-header">
+        <h1>Layout Shell</h1>
+      </div>
+
+      <p style="color: var(--text-secondary); max-width: 640px; line-height: 1.6;">
+        This is the <strong>base.html</strong> layout shell for PrintFlow. It demonstrates the top navigation bar with printer status indicators, the sidebar navigation, and the main content area. All wireframes share this layout structure.
+      </p>
+
+      <div style="margin-top: var(--space-8);">
+        <h3 style="margin-bottom: var(--space-4);">Component Preview</h3>
+
+        <!-- Buttons -->
+        <div style="margin-bottom: var(--space-6);">
+          <h4 style="font-family: var(--font-heading); font-size: 14px; color: var(--text-secondary); margin-bottom: var(--space-3); text-transform: uppercase; letter-spacing: 0.05em;">Buttons</h4>
+          <div style="display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: center;">
+            <button class="btn btn-primary">Primary</button>
+            <button class="btn btn-success">Success</button>
+            <button class="btn btn-warning">Warning</button>
+            <button class="btn btn-danger">Danger</button>
+            <button class="btn btn-secondary">Secondary</button>
+            <button class="btn btn-danger btn-lg">Critical Action</button>
+            <button class="btn btn-sm btn-secondary">Small</button>
+          </div>
+        </div>
+
+        <!-- Badges -->
+        <div style="margin-bottom: var(--space-6);">
+          <h4 style="font-family: var(--font-heading); font-size: 14px; color: var(--text-secondary); margin-bottom: var(--space-3); text-transform: uppercase; letter-spacing: 0.05em;">Status Badges</h4>
+          <div style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
+            <span class="badge badge-success"><span class="badge-dot"></span> Running</span>
+            <span class="badge badge-warning"><span class="badge-dot"></span> Warning</span>
+            <span class="badge badge-danger"><span class="badge-dot"></span> Error</span>
+            <span class="badge badge-primary"><span class="badge-dot"></span> Queued</span>
+            <span class="badge badge-neutral"><span class="badge-dot"></span> Idle</span>
+          </div>
+        </div>
+
+        <!-- Progress Bars -->
+        <div style="margin-bottom: var(--space-6);">
+          <h4 style="font-family: var(--font-heading); font-size: 14px; color: var(--text-secondary); margin-bottom: var(--space-3); text-transform: uppercase; letter-spacing: 0.05em;">Progress Bars</h4>
+          <div style="display: flex; flex-direction: column; gap: var(--space-3); max-width: 400px;">
+            <div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span style="font-size:13px; color: var(--text-secondary);">Printing</span>
+                <span class="data-text" style="font-size:13px; color: var(--color-success);">72%</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill progress-fill-success" style="width:72%"></div></div>
+            </div>
+            <div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span style="font-size:13px; color: var(--text-secondary);">Queued</span>
+                <span class="data-text" style="font-size:13px; color: var(--color-primary);">45%</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill progress-fill-primary" style="width:45%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Typography -->
+        <div style="margin-bottom: var(--space-6);">
+          <h4 style="font-family: var(--font-heading); font-size: 14px; color: var(--text-secondary); margin-bottom: var(--space-3); text-transform: uppercase; letter-spacing: 0.05em;">Typography</h4>
+          <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+            <div><span style="color: var(--text-muted); font-size: 12px;">Space Grotesk / Heading</span><br><span style="font-family: var(--font-heading); font-size: 28px; font-weight: 700;">Production Dashboard</span></div>
+            <div><span style="color: var(--text-muted); font-size: 12px;">IBM Plex Sans / Body</span><br><span>3 printers active, 12 jobs in queue, 47 completed today.</span></div>
+            <div><span style="color: var(--text-muted); font-size: 12px;">JetBrains Mono / Data</span><br><span class="data-text-lg">X=123.4mm Y=456.7mm Z=12.0mm</span></div>
+          </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div style="margin-bottom: var(--space-6);">
+          <h4 style="font-family: var(--font-heading); font-size: 14px; color: var(--text-secondary); margin-bottom: var(--space-3); text-transform: uppercase; letter-spacing: 0.05em;">KPI Cards</h4>
+          <div class="grid-4">
+            <div class="kpi-card"><div class="kpi-value" style="color: var(--color-warning);">8</div><div class="kpi-label">Pending</div></div>
+            <div class="kpi-card"><div class="kpi-value" style="color: var(--color-success);">2</div><div class="kpi-label">Printing</div></div>
+            <div class="kpi-card"><div class="kpi-value" style="color: var(--text-primary);">47</div><div class="kpi-label">Completed</div></div>
+            <div class="kpi-card"><div class="kpi-value" style="color: var(--color-danger);">1</div><div class="kpi-label">Defects</div></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Clock script -->
+  <script>
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent =
+        now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+    updateClock();
+    setInterval(updateClock, 30000);
+  </script>
+</body>
+</html>

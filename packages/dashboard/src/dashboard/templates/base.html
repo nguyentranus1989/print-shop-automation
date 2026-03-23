@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}PrintFlow{% endblock %}</title>
+  <!-- Pico CSS — classless, dark mode, responsive -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <!-- HTMX 2.0 -->
+  <script src="https://unpkg.com/htmx.org@2.0.0/dist/htmx.min.js" defer></script>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header class="container">
+    <nav>
+      <ul>
+        <li><strong>PrintFlow</strong></li>
+      </ul>
+      <ul>
+        <li><a href="/">Dashboard</a></li>
+        <li><a href="/jobs">Job Queue</a></li>
+        <li><a href="/printers">Printers</a></li>
+        <li><a href="/analytics">Analytics</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="container">
+    <small>PrintFlow &mdash; Print Shop Automation</small>
+  </footer>
+</body>
+</html>

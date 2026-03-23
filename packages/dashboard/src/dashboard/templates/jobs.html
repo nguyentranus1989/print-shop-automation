@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Job Queue — PrintFlow{% endblock %}
+{% block content %}
+<h1>Job Queue</h1>
+
+<section>
+  <button hx-get="/jobs/new" hx-target="#modal" hx-swap="innerHTML">New Job</button>
+  <div id="modal"></div>
+</section>
+
+<section>
+  <div id="job-list"
+       hx-get="/api/jobs"
+       hx-trigger="load, every 5s"
+       hx-swap="innerHTML">
+    <p aria-busy="true">Loading jobs...</p>
+  </div>
+</section>
+{% endblock %}

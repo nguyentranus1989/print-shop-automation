@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+
+# uv / pip
+.venv/
+venv/
+.uv/
+uv.lock
+
+# Environment files — NEVER commit secrets
+.env
+agent.toml
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# PyInstaller
+*.spec
+*.exe
+*.app
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.user
+*.sln.docstates
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Temp files
+*.log
+*.tmp
+Hstemp/
+
+# Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Ruff / mypy / pyright
+.ruff_cache/
+.mypy_cache/
+.pyright/
+pyrightconfig.json

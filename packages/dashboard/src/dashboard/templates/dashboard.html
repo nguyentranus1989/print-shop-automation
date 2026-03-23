@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — PrintFlow{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+<p><!-- HTMX UI to be implemented by UI designer --></p>
+
+<section>
+  <h2>Printer Status</h2>
+  <div id="printer-status"
+       hx-get="/api/printers"
+       hx-trigger="load, every 5s"
+       hx-swap="innerHTML">
+    <p aria-busy="true">Loading printers...</p>
+  </div>
+</section>
+
+<section>
+  <h2>Today's Summary</h2>
+  <div id="summary"
+       hx-get="/api/analytics/summary"
+       hx-trigger="load, every 10s"
+       hx-swap="innerHTML">
+    <p aria-busy="true">Loading stats...</p>
+  </div>
+</section>
+{% endblock %}

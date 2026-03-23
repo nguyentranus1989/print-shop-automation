@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Printers — PrintFlow{% endblock %}
+{% block content %}
+<h1>Printer Control</h1>
+
+<section>
+  <div id="printer-controls"
+       hx-get="/api/printers"
+       hx-trigger="load, every 3s"
+       hx-swap="innerHTML">
+    <p aria-busy="true">Loading printers...</p>
+  </div>
+</section>
+{% endblock %}
