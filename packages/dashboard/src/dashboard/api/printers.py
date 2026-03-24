@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any, AsyncGenerator
 
@@ -13,6 +14,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from common.models.printer import PrinterStatus, PrinterType
 from dashboard.db.database import get_db
 from dashboard.db.models import Printer
 from dashboard.services.agent_manager import AgentManager
@@ -52,6 +54,17 @@ class PrinterUpdate(BaseModel):
 
 class ControlRequest(BaseModel):
     command: str
+
+
+class HeartbeatRequest(BaseModel):
+    agent_url: str
+    connected: bool = False
+    printing: bool = False
+    printer_type: str = "dtg"
+    ink_levels: dict[str, float] = {}
+    current_job: str | None = None
+    position_x: float = 0.0
+    position_y: float = 0.0
 
 
 # --- Helper -----------------------------------------------------------
@@ -364,3 +377,55 @@ async def printer_sse(request: Request) -> StreamingResponse:
 
 
 router.add_api_route("/sse", printer_sse, methods=["GET"])
+
+
+async def heartbeat(
+    req: HeartbeatRequest,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """POST /api/printers/heartbeat — agent pushes its status to the dashboard.
+
+    Used when the dashboard can't poll agents (cloud dashboard + LAN agents).
+    """
+    manager = _get_manager()
+    printer = db.query(Printer).filter(Printer.agent_url == req.agent_url).first()
+    if printer is None:
+        raise HTTPException(status_code=404, detail="Printer not registered")
+
+    # Compute status string
+    if req.printing:
+        status_str = "printing"
+    elif req.connected:
+        status_str = "online"
+    else:
+        status_str = "offline"
+
+    # Update DB
+    printer.status = status_str
+    printer.printer_type = req.printer_type
+    printer.last_seen_at = datetime.utcnow()
+    db.commit()
+
+    # Update in-memory cache so cards reflect immediately
+    status = PrinterStatus(
+        type=PrinterType(req.printer_type),
+        connected=req.connected,
+        printing=req.printing,
+        ink_levels=req.ink_levels,
+        current_job=req.current_job,
+        position_x=req.position_x,
+        position_y=req.position_y,
+    )
+    entry = manager._entries.get(req.agent_url)
+    if entry:
+        entry.status = status
+        entry.missed_polls = 0
+
+    # Notify SSE subscribers
+    for cb in manager._subscribers:
+        cb(req.agent_url, req.model_dump())
+
+    return {"success": True, "status": status_str}
+
+
+router.add_api_route("/heartbeat", heartbeat, methods=["POST"])

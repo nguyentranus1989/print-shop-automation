@@ -1,4 +1,4 @@
-"""Auto-registration — agent registers itself with the dashboard on startup."""
+"""Auto-registration and heartbeat — agent registers and pushes status to dashboard."""
 
 from __future__ import annotations
 
@@ -46,7 +46,6 @@ async def register_with_dashboard(
     """POST to dashboard /api/printers to register this agent.
 
     Retries up to 5 times with backoff if dashboard is unreachable.
-    Returns True on success.
     """
     lan_ip = detect_lan_ip()
     agent_url = f"http://{lan_ip}:{agent_port}"
@@ -82,3 +81,51 @@ async def register_with_dashboard(
 
     print("[agent] Could not register with dashboard after 5 attempts. Will retry later.", flush=True)
     return False
+
+
+async def heartbeat_loop(
+    dashboard_url: str,
+    agent_port: int,
+    printer_type: str,
+    get_status_fn,
+    interval: float = 10.0,
+) -> None:
+    """Periodically push agent status to the dashboard heartbeat endpoint.
+
+    Runs forever as a background task.
+    """
+    lan_ip = detect_lan_ip()
+    agent_url = f"http://{lan_ip}:{agent_port}"
+    heartbeat_api = dashboard_url.strip().rstrip("/") + "/api/printers/heartbeat"
+
+    # Wait a bit for the agent to fully start
+    await asyncio.sleep(3)
+
+    while True:
+        try:
+            status = await get_status_fn()
+            payload = {
+                "agent_url": agent_url,
+                "connected": status.connected,
+                "printing": status.printing,
+                "printer_type": printer_type,
+                "ink_levels": status.ink_levels or {},
+                "current_job": status.current_job,
+                "position_x": status.position_x,
+                "position_y": status.position_y,
+            }
+
+            code, _ = await asyncio.get_event_loop().run_in_executor(
+                None, _post_json, heartbeat_api, payload
+            )
+
+            if code == 200:
+                pass  # silent success
+            elif code == 404:
+                print("[agent] Heartbeat: not registered yet, will retry registration", flush=True)
+            else:
+                print(f"[agent] Heartbeat: HTTP {code}", flush=True)
+        except Exception:
+            pass  # silent failure, will retry next interval
+
+        await asyncio.sleep(interval)

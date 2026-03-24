@@ -14,7 +14,7 @@ from agent.api import app, set_backend, set_printer_info
 from agent.printer.mock import MockBackend
 from agent.printer.dtg import DTGBackend
 from agent.printexp.detector import detect_printer_type
-from agent.registration import register_with_dashboard
+from agent.registration import register_with_dashboard, heartbeat_loop
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
@@ -117,13 +117,22 @@ def main() -> None:
 
     @app.on_event("startup")
     async def _auto_register() -> None:
-        """Register this agent with the dashboard (non-blocking)."""
+        """Register this agent and start heartbeat loop."""
         asyncio.create_task(
             register_with_dashboard(
                 dashboard_url=_reg_config["dashboard_url"],
                 agent_name=_reg_config["name"],
                 agent_port=_reg_config["port"],
                 printer_type=_reg_config["printer_type"],
+            )
+        )
+        asyncio.create_task(
+            heartbeat_loop(
+                dashboard_url=_reg_config["dashboard_url"],
+                agent_port=_reg_config["port"],
+                printer_type=_reg_config["printer_type"],
+                get_status_fn=backend.get_status,
+                interval=10.0,
             )
         )
 
