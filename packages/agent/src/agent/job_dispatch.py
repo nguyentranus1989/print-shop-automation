@@ -47,12 +47,16 @@ async def job_dispatch_loop(
                 await asyncio.sleep(interval)
                 continue
 
-            # Filter: only pick jobs assigned to us (or unassigned)
+            # Filter: pick jobs assigned to us, or unassigned, or any if we don't know our ID
             my_jobs = []
             for j in jobs:
                 pid = j.get("printer_id")
-                if pid is None or (agent_printer_id and pid == agent_printer_id):
-                    my_jobs.append(j)
+                if pid is None:
+                    my_jobs.append(j)  # unassigned job — take it
+                elif agent_printer_id is None:
+                    my_jobs.append(j)  # we don't know our ID — take any of our type
+                elif pid == agent_printer_id:
+                    my_jobs.append(j)  # explicitly assigned to us
 
             if not my_jobs:
                 await asyncio.sleep(interval)
