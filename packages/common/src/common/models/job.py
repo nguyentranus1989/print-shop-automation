@@ -12,11 +12,12 @@ from pydantic import BaseModel, Field
 class JobStatus(str, Enum):
     """All possible states a print job can be in."""
 
-    PENDING = "pending"      # created, waiting to be queued
+    PENDING = "pending"      # created, waiting to be picked up
     QUEUED = "queued"        # assigned to a printer, waiting for inject
-    INJECTING = "injecting"  # file being sent to PrintExp via TCP 9100
-    PRINTING = "printing"    # PrintExp is actively printing
-    COMPLETED = "completed"  # job finished successfully
+    INJECTING = "injecting"  # DLL injection in progress
+    SENT = "sent"            # file injected into PrintExp queue
+    PRINTING = "printing"    # PrintExp is actively printing (needs hardware monitoring)
+    COMPLETED = "completed"  # print finished (needs hardware monitoring)
     FAILED = "failed"        # error during inject or print
     CANCELLED = "cancelled"  # manually cancelled
 
@@ -54,6 +55,7 @@ class Job(BaseModel):
             JobStatus.COMPLETED,
             JobStatus.FAILED,
             JobStatus.CANCELLED,
+            JobStatus.SENT,
         )
 
     def duration_seconds(self) -> Optional[float]:

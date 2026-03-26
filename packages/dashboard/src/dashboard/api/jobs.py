@@ -86,6 +86,7 @@ def list_jobs(
                 "pending": "badge-warn",
                 "queued": "badge-info",
                 "injecting": "badge-info",
+                "sent": "badge-ok",
                 "printing": "badge-accent",
                 "completed": "badge-ok",
                 "failed": "badge-err",

@@ -77,8 +77,8 @@ async def job_dispatch_loop(
                 success = False
 
             if success:
-                _patch_job(dashboard_url, job_id, "completed")
-                print(f"[dispatch] Job {order_id} — COMPLETED", flush=True)
+                _patch_job(dashboard_url, job_id, "sent")
+                print(f"[dispatch] Job {order_id} — SENT to PrintExp", flush=True)
             else:
                 _patch_job(dashboard_url, job_id, "failed", "Injection failed")
                 print(f"[dispatch] Job {order_id} — FAILED", flush=True)
