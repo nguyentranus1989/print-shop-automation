@@ -15,6 +15,7 @@ import os
 import time
 
 from common.models.printer import PrinterStatus, PrinterType
+from common.protocols.wm_command import DTF_BUTTONS, WMCommandController
 
 logger = logging.getLogger(__name__)
 
@@ -35,15 +36,20 @@ def _find_dll_dir() -> str:
 
 
 class DTFBackend:
-    """DTF printer backend using proven single-shot DLL injection."""
+    """DTF/UV printer backend using DLL injection.
 
-    def __init__(self, dll_dir: str | None = None, printexp_exe: str | None = None):
+    Works for DTF and UV builds — pass button_map to select control IDs.
+    """
+
+    def __init__(self, dll_dir: str | None = None, printexp_exe: str | None = None,
+                 button_map: dict[str, int] | None = None):
         self.dll_dir = dll_dir or _find_dll_dir()
         self.inject_dll = os.path.join(self.dll_dir, "printflow-bridge.dll")
         self.config_path = os.path.join(self.dll_dir, "inject_config.txt")
         self.log_path = os.path.join(self.dll_dir, "inject_log.txt")
         self.printexp_exe = printexp_exe
         self._printexp_connected = False
+        self._wm = WMCommandController(buttons=button_map or DTF_BUTTONS)
 
     def _find_pid(self) -> int | None:
         """Find PrintExp_X64.exe PID."""
@@ -207,6 +213,11 @@ class DTFBackend:
         )
 
     async def send_command(self, command: str) -> bool:
-        """Send control command — not yet implemented for DTF."""
-        logger.warning("DTF send_command not yet implemented: %s", command)
-        return False
+        """Send WM_COMMAND to PrintExp window."""
+        try:
+            return await asyncio.get_event_loop().run_in_executor(
+                None, self._wm.send_named, command
+            )
+        except KeyError:
+            logger.warning("Unknown command: %s", command)
+            return False

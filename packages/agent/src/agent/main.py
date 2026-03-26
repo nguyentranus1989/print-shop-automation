@@ -110,6 +110,11 @@ def main() -> None:
             if printer_type == PrinterType.DTF:
                 backend = DTFBackend(printexp_exe=config.printexp_path)
                 print(f"[agent] Real mode — DTF (DLL injection)", flush=True)
+            elif printer_type == PrinterType.UV:
+                from common.protocols.wm_command import UV_BUTTONS
+                backend = DTFBackend(printexp_exe=config.printexp_path,
+                                     button_map=UV_BUTTONS)
+                print(f"[agent] Real mode — UV (DLL injection)", flush=True)
             else:
                 backend = DTGBackend(config)
                 print(f"[agent] Real mode — {printer_type.value} (TCP 9100)", flush=True)
