@@ -43,6 +43,14 @@ def _post_json(url: str, data: dict) -> tuple[int, str]:
         return e.code, e.read().decode("utf-8", errors="replace")
 
 
+_registered_printer_id: int | None = None
+
+
+def get_registered_printer_id() -> int | None:
+    """Return the printer_id assigned by the dashboard, or None if not registered."""
+    return _registered_printer_id
+
+
 async def register_with_dashboard(
     dashboard_url: str,
     agent_name: str,
@@ -73,10 +81,24 @@ async def register_with_dashboard(
             )
 
             if status in (200, 201):
+                global _registered_printer_id
+                try:
+                    data = json.loads(body)
+                    _registered_printer_id = data.get("id")
+                    print(f"[agent] Registered as printer_id={_registered_printer_id}", flush=True)
+                except Exception:
+                    pass
                 print(f"[agent] Registered with dashboard as '{agent_name}' at {agent_url}", flush=True)
                 return True
             elif status == 409:
-                print(f"[agent] Already registered with dashboard at {agent_url}", flush=True)
+                # Try to get our printer_id from existing registration
+                global _registered_printer_id
+                try:
+                    data = json.loads(body)
+                    _registered_printer_id = data.get("id")
+                except Exception:
+                    pass
+                print(f"[agent] Already registered (printer_id={_registered_printer_id})", flush=True)
                 return True
             else:
                 print(f"[agent] Registration failed: HTTP {status} {body[:200]}", flush=True)

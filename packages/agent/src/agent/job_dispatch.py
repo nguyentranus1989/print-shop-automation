@@ -47,15 +47,18 @@ async def job_dispatch_loop(
                 await asyncio.sleep(interval)
                 continue
 
-            # Filter: pick jobs assigned to us, or unassigned, or any if we don't know our ID
+            # Resolve our printer_id if not set yet
+            if agent_printer_id is None:
+                from agent.registration import get_registered_printer_id
+                agent_printer_id = get_registered_printer_id()
+
+            # Filter: pick jobs assigned to us or unassigned
             my_jobs = []
             for j in jobs:
                 pid = j.get("printer_id")
                 if pid is None:
-                    my_jobs.append(j)  # unassigned job — take it
-                elif agent_printer_id is None:
-                    my_jobs.append(j)  # we don't know our ID — take any of our type
-                elif pid == agent_printer_id:
+                    my_jobs.append(j)  # unassigned — any printer of this type can take it
+                elif agent_printer_id and pid == agent_printer_id:
                     my_jobs.append(j)  # explicitly assigned to us
 
             if not my_jobs:
