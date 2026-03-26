@@ -27,13 +27,19 @@ def detect_lan_ip() -> str:
         return "127.0.0.1"
 
 
+_UA = "PrintFlow-Agent/1.0"
+
+
 def _post_json(url: str, data: dict) -> tuple[int, str]:
     """POST JSON using stdlib urllib. Returns (status_code, body)."""
     body = json.dumps(data).encode("utf-8")
     req = urllib.request.Request(
         url,
         data=body,
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": _UA,
+        },
         method="POST",
     )
     try:

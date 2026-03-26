@@ -39,6 +39,7 @@ async def job_dispatch_loop(
 
             req = urllib.request.Request(url)
             req.add_header("Accept", "application/json")
+            req.add_header("User-Agent", "PrintFlow-Agent/1.0")
 
             with urllib.request.urlopen(req, timeout=15, context=_ssl_ctx) as resp:
                 body = resp.read().decode("utf-8", errors="replace")
@@ -91,6 +92,7 @@ def _patch_job(dashboard_url: str, job_id: str, status: str, error_msg: str | No
     body = json.dumps(data).encode("utf-8")
     req = urllib.request.Request(url, data=body, method="PATCH")
     req.add_header("Content-Type", "application/json")
+    req.add_header("User-Agent", "PrintFlow-Agent/1.0")
 
     try:
         with urllib.request.urlopen(req, timeout=5, context=_ssl_ctx):
