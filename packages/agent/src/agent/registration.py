@@ -74,6 +74,8 @@ async def register_with_dashboard(
     print(f"[agent] Registering with dashboard at {dashboard_api}", flush=True)
     print(f"[agent] Agent URL: {agent_url}", flush=True)
 
+    global _registered_printer_id
+
     for attempt in range(5):
         try:
             status, body = await asyncio.get_event_loop().run_in_executor(
@@ -81,7 +83,6 @@ async def register_with_dashboard(
             )
 
             if status in (200, 201):
-                global _registered_printer_id
                 try:
                     data = json.loads(body)
                     _registered_printer_id = data.get("id")
@@ -91,8 +92,6 @@ async def register_with_dashboard(
                 print(f"[agent] Registered with dashboard as '{agent_name}' at {agent_url}", flush=True)
                 return True
             elif status == 409:
-                # Try to get our printer_id from existing registration
-                global _registered_printer_id
                 try:
                     data = json.loads(body)
                     _registered_printer_id = data.get("id")
