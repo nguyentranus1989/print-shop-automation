@@ -4,8 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import ssl
 import urllib.request
 import urllib.error
+
+_ssl_ctx = ssl.create_default_context()
+_ssl_ctx.check_hostname = False
+_ssl_ctx.verify_mode = ssl.CERT_NONE
 
 
 async def job_dispatch_loop(
@@ -35,7 +40,7 @@ async def job_dispatch_loop(
             req = urllib.request.Request(url)
             req.add_header("Accept", "application/json")
 
-            with urllib.request.urlopen(req, timeout=5) as resp:
+            with urllib.request.urlopen(req, timeout=5, context=_ssl_ctx) as resp:
                 jobs = json.loads(resp.read().decode("utf-8"))
 
             if not jobs:
@@ -98,7 +103,7 @@ def _patch_job(dashboard_url: str, job_id: str, status: str, error_msg: str | No
     req.add_header("Content-Type", "application/json")
 
     try:
-        with urllib.request.urlopen(req, timeout=5):
+        with urllib.request.urlopen(req, timeout=5, context=_ssl_ctx):
             pass
     except Exception as e:
         print(f"[dispatch] Failed to update job {job_id}: {e}", flush=True)

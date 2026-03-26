@@ -5,8 +5,14 @@ from __future__ import annotations
 import asyncio
 import json
 import socket
+import ssl
 import urllib.request
 import urllib.error
+
+# Allow self-signed / unverified SSL certs (common in local/internal setups)
+_ssl_ctx = ssl.create_default_context()
+_ssl_ctx.check_hostname = False
+_ssl_ctx.verify_mode = ssl.CERT_NONE
 
 
 def detect_lan_ip() -> str:
@@ -31,7 +37,7 @@ def _post_json(url: str, data: dict) -> tuple[int, str]:
         method="POST",
     )
     try:
-        resp = urllib.request.urlopen(req, timeout=10)
+        resp = urllib.request.urlopen(req, timeout=10, context=_ssl_ctx)
         return resp.status, resp.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode("utf-8", errors="replace")
