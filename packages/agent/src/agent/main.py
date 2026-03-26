@@ -150,7 +150,7 @@ def main() -> None:
                 dashboard_url=_reg_config["dashboard_url"],
                 printer_type=_reg_config["printer_type"],
                 inject_fn=backend.inject_job,
-                interval=5.0,
+                interval=2.0,
             )
         )
 
