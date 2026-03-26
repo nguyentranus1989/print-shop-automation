@@ -45,7 +45,13 @@ function setStep(val, btn) {
 }
 
 function sendMove(axis, dir) {
-  sendControl('move', {axis: axis, dir: dir, step: stepSize});
+  var moveMap = {
+    'X+': 'move_right', 'X-': 'move_left',
+    'Y+': 'move_ahead', 'Y-': 'move_back',
+    'Z+': 'z_up',       'Z-': 'z_down'
+  };
+  var cmd = moveMap[axis + dir];
+  if (cmd) sendControl(cmd);
 }
 
 function sendControl(cmd, extra) {
