@@ -95,11 +95,16 @@
      onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal-box">
     <div class="modal-title">New Print Job</div>
-    <form hx-post="/api/jobs"
+    <form id="add-job-form"
+          hx-post="/api/jobs"
           hx-swap="none"
+          hx-ext="json-enc"
           hx-on::after-request="
-            document.getElementById('add-job-modal').classList.remove('open');
-            htmx.trigger('#job-tbody','load')">
+            if(event.detail.successful){
+              document.getElementById('add-job-modal').classList.remove('open');
+              document.getElementById('add-job-form').reset();
+              htmx.trigger('#job-tbody','load');
+            }">
 
       <div class="form-row">
         <label class="form-label">Order ID</label>
@@ -107,22 +112,48 @@
       </div>
 
       <div class="form-row">
-        <label class="form-label">Product / Description</label>
-        <input class="input" name="product" placeholder="e.g. T-Shirt 2XL Black" required>
+        <label class="form-label">Product / Notes</label>
+        <input class="input" name="notes" placeholder="e.g. T-Shirt 2XL Black">
       </div>
 
       <div class="form-row">
         <label class="form-label">Target Printer</label>
-        <select class="select" name="printer">
-          <option value="dtg">DTG Pro 16</option>
-          <option value="dtf">DTF Station</option>
-          <option value="uv">UV Flatbed</option>
+        <select class="select" id="printer-select"
+                onchange="var p=this.value.split('|');document.getElementById('hidden-pid').value=p[0];document.getElementById('hidden-ptype').value=p[1];">
+          <option value="">Loading printers...</option>
         </select>
+        <input type="hidden" name="printer_id" id="hidden-pid" value="">
+        <input type="hidden" name="printer_type" id="hidden-ptype" value="">
       </div>
+      <script>
+        (function(){
+          var btn = document.querySelector('[onclick*="add-job-modal"]');
+          if(btn) btn.addEventListener('click', loadPrinters);
+          loadPrinters();
+          function loadPrinters(){
+            fetch('/api/printers', {headers:{'Accept':'application/json'}})
+              .then(function(r){return r.json()})
+              .then(function(printers){
+                var sel = document.getElementById('printer-select');
+                var html = '';
+                printers.forEach(function(p){
+                  html += '<option value="'+p.id+'|'+p.printer_type+'">'+p.name+' ('+p.printer_type.toUpperCase()+')</option>';
+                });
+                if(!html) html = '<option value="">No printers registered</option>';
+                sel.innerHTML = html;
+                sel.dispatchEvent(new Event('change'));
+              })
+              .catch(function(){});
+          }
+        })();
+      </script>
 
       <div class="form-row">
-        <label class="form-label">Design File Path</label>
-        <input class="input" name="design_path" placeholder="D:\Rip\design-file.prn">
+        <label class="form-label">PRN File Path</label>
+        <div style="display:flex;gap:8px;">
+          <input class="input" name="prn_path" id="prn-path-input" placeholder="C:\path\to\file.prn" required style="flex:1;">
+          <button type="button" class="btn btn-ghost" onclick="openFileBrowser()" style="flex-shrink:0;">Browse</button>
+        </div>
       </div>
 
       <div class="modal-actions">
@@ -138,6 +169,40 @@
     </form>
   </div>
 </div>
+
+<script>
+function openFileBrowser() {
+  var sel = document.getElementById('printer-select');
+  if (!sel || !sel.value) { alert('Select a printer first'); return; }
+  var printerId = sel.value.split('|')[0];
+
+  fetch('/api/printers', {headers:{'Accept':'application/json'}})
+    .then(function(r){return r.json()})
+    .then(function(printers){
+      var p = printers.find(function(x){return String(x.id) === printerId});
+      if (!p) { alert('Printer not found'); return; }
+
+      // Open native Windows file dialog on the agent machine
+      var btn = document.querySelector('[onclick="openFileBrowser()"]');
+      if (btn) { btn.textContent = 'Waiting...'; btn.disabled = true; }
+
+      fetch(p.agent_url + '/files/browse', {method:'POST'})
+        .then(function(r){
+          if (r.status === 204) return null;
+          return r.json();
+        })
+        .then(function(data){
+          if (data && data.path) {
+            document.getElementById('prn-path-input').value = data.path;
+          }
+        })
+        .catch(function(e){ alert('Browse failed: ' + e.message); })
+        .finally(function(){
+          if (btn) { btn.textContent = 'Browse'; btn.disabled = false; }
+        });
+    });
+}
+</script>
 
 {% endblock %}
 

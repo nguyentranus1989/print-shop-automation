@@ -13,8 +13,10 @@ from common.models.printer import PrinterType
 from agent.api import app, set_backend, set_printer_info
 from agent.printer.mock import MockBackend
 from agent.printer.dtg import DTGBackend
+from agent.printer.dtf import DTFBackend
 from agent.printexp.detector import detect_printer_type
 from agent.registration import register_with_dashboard, heartbeat_loop
+from agent.job_dispatch import job_dispatch_loop
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
@@ -88,6 +90,10 @@ def main() -> None:
         printer_type = PrinterType.DTG
     elif args.printer_type != "auto":
         printer_type = PrinterType(args.printer_type)
+    elif config.printer_type and config.printer_type != "auto":
+        # Config file explicitly sets type — use it, skip auto-detection
+        printer_type = PrinterType(config.printer_type)
+        print(f"[agent] Printer type from config: {printer_type.value}", flush=True)
     else:
         printer_type = detect_printer_type(config.printexp_path)
 
@@ -97,12 +103,16 @@ def main() -> None:
         print(f"[agent] Mock mode — printer type: {printer_type.value}", flush=True)
     else:
         if sys.platform != "win32":
-            print("[agent] WARNING: DTGBackend requires Windows. Falling back to MockBackend.", flush=True)
+            print("[agent] WARNING: Real backends require Windows. Falling back to MockBackend.", flush=True)
             backend = MockBackend(printer_type=printer_type)
         else:
             config.printer_type = printer_type.value
-            backend = DTGBackend(config)
-            print(f"[agent] Real mode — printer type: {printer_type.value}", flush=True)
+            if printer_type == PrinterType.DTF:
+                backend = DTFBackend(printexp_exe=config.printexp_path)
+                print(f"[agent] Real mode — DTF (DLL injection)", flush=True)
+            else:
+                backend = DTGBackend(config)
+                print(f"[agent] Real mode — {printer_type.value} (TCP 9100)", flush=True)
 
     set_backend(backend)
     set_printer_info(name=config.name, printer_type=printer_type.value)
@@ -133,6 +143,14 @@ def main() -> None:
                 printer_type=_reg_config["printer_type"],
                 get_status_fn=backend.get_status,
                 interval=10.0,
+            )
+        )
+        asyncio.create_task(
+            job_dispatch_loop(
+                dashboard_url=_reg_config["dashboard_url"],
+                printer_type=_reg_config["printer_type"],
+                inject_fn=backend.inject_job,
+                interval=5.0,
             )
         )
 

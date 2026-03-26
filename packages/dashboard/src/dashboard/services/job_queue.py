@@ -33,6 +33,7 @@ class JobQueue:
         order_id: str,
         prn_path: str,
         printer_type: str,
+        printer_id: int | None = None,
         copies: int = 1,
         notes: str | None = None,
     ) -> Job:
@@ -42,6 +43,7 @@ class JobQueue:
             order_id: PodFactory order reference.
             prn_path: Path to the .prn file.
             printer_type: Target printer type ("dtg", "dtf", "uv").
+            printer_id: Specific printer to assign to (None = any of type).
             copies: Number of copies to print.
             notes: Optional free-text notes.
 
@@ -53,6 +55,7 @@ class JobQueue:
             order_id=order_id,
             prn_path=prn_path,
             printer_type=printer_type,
+            printer_id=printer_id,
             status=JobStatus.PENDING.value,
             created_at=datetime.utcnow(),
             copies=copies,
