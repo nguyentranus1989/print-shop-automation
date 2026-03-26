@@ -18,6 +18,7 @@ from dashboard.api.printers import router as printers_router, set_agent_manager
 from dashboard.api.jobs import router as jobs_router
 from dashboard.api.job_notify import router as job_notify_router
 from dashboard.api.analytics import router as analytics_router
+from dashboard.api.reports import router as reports_router
 from dashboard.db.database import init_db, SessionLocal
 from dashboard.services.agent_manager import AgentManager
 
@@ -71,6 +72,7 @@ def _make_app() -> FastAPI:
     app.include_router(jobs_router)
     app.include_router(job_notify_router)
     app.include_router(analytics_router)
+    app.include_router(reports_router)
 
     # --- HTML page routes -----------------------------------------
 
@@ -98,6 +100,14 @@ def _make_app() -> FastAPI:
             request=request,
             name="analytics.html",
             context={"active_page": "analytics"},
+        )
+
+    @app.get("/reports", response_class=HTMLResponse)
+    def reports_page(request: Request) -> HTMLResponse:
+        return templates.TemplateResponse(
+            request=request,
+            name="reports.html",
+            context={"active_page": "reports"},
         )
 
     @app.get("/health")

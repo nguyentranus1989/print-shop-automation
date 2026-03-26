@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Reports — PrintFlow{% endblock %}
+{% block page_title %}Print History{% endblock %}
+
+{% block content %}
+
+<!-- Printer selector -->
+<div class="time-range-bar" id="printer-selector"
+     hx-get="/api/printers/tabs"
+     hx-trigger="load"
+     hx-swap="innerHTML"
+     hx-vals='{"context": "reports"}'>
+</div>
+
+<!-- Report content — loaded via HTMX when printer is selected -->
+<div id="report-content">
+  <div class="empty-state">
+    <i data-lucide="file-bar-chart"></i>
+    <div style="font-size:15px;font-weight:500;color:var(--text-sec);margin-top:8px;">Select a printer to view reports</div>
+    <div style="font-size:12px;color:var(--text-mut);">Production history from PrintExp StatisticData.db</div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function loadReport(printerId, btn) {
+  document.querySelectorAll('.range-btn').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  htmx.ajax('GET', '/api/reports/page?printer_id=' + printerId, {target: '#report-content', swap: 'innerHTML'});
+}
+</script>
+{% endblock %}

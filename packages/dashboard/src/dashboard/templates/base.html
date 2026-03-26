@@ -64,6 +64,9 @@
       <a href="/analytics" class="nav-link {% if active_page == 'analytics' %}active{% endif %}">
         <i data-lucide="bar-chart-2"></i> Analytics
       </a>
+      <a href="/reports" class="nav-link {% if active_page == 'reports' %}active{% endif %}">
+        <i data-lucide="file-bar-chart"></i> Print History
+      </a>
     </nav>
 
     <!-- Printer status at bottom of sidebar — dynamic from DB -->
@@ -132,6 +135,10 @@
     <a href="/analytics" class="bottom-nav-item {% if active_page == 'analytics' %}active{% endif %}">
       <i data-lucide="bar-chart-2"></i>
       <span>Analytics</span>
+    </a>
+    <a href="/reports" class="bottom-nav-item {% if active_page == 'reports' %}active{% endif %}">
+      <i data-lucide="file-bar-chart"></i>
+      <span>History</span>
     </a>
   </nav>
 

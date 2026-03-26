@@ -22,8 +22,10 @@ from starlette.middleware.cors import CORSMiddleware
 from common.models.job import Job
 from common.models.printer import PrinterStatus
 from agent.printer.backend import PrinterBackend
+from agent.reports import router as reports_router
 
 app = FastAPI(title="PrintFlow Agent", version="0.1.0")
+app.include_router(reports_router)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 # Set by main.py before app starts

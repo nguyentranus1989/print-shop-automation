@@ -117,6 +117,11 @@ def main() -> None:
     set_backend(backend)
     set_printer_info(name=config.name, printer_type=printer_type.value)
 
+    # Configure UV report DB if PrintExp path is set
+    if config.printexp_path:
+        from agent.reports import set_db_path
+        set_db_path(config.printexp_path)
+
     # Auto-register with dashboard after server starts
     _reg_config = {
         "dashboard_url": config.dashboard_url,

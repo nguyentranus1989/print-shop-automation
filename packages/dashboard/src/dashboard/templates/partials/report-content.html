@@ -1,0 +1,146 @@
+<!-- Report content partial — loaded via HTMX -->
+
+{% if not summary %}
+<div class="empty-state" style="padding:40px;">
+  <i data-lucide="alert-circle"></i>
+  <div style="font-size:14px;color:var(--text-sec);margin-top:8px;">No report data available</div>
+  <div style="font-size:12px;color:var(--text-mut);">Agent may not have StatisticData.db configured</div>
+</div>
+{% else %}
+
+<!-- KPI Summary -->
+<div class="grid-kpi" style="margin-bottom:20px;">
+  <div class="card">
+    <div class="card-title">Total Jobs</div>
+    <div style="margin-top:8px;">
+      <span class="analytics-kpi-value">{{ summary.total_jobs }}</span>
+    </div>
+    <div class="analytics-kpi-label">{{ summary.completed }} completed</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Unique Designs</div>
+    <div style="margin-top:8px;">
+      <span class="analytics-kpi-value">{{ summary.unique_designs }}</span>
+    </div>
+    <div class="analytics-kpi-label">Different files printed</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Total Area</div>
+    <div style="margin-top:8px;">
+      <span class="analytics-kpi-value">{{ summary.total_area_m2 }}</span>
+      <span class="analytics-kpi-unit">m&sup2;</span>
+    </div>
+    <div class="analytics-kpi-label">{{ summary.total_time_display }} print time</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Ink Cost</div>
+    <div style="margin-top:8px;">
+      <span class="analytics-kpi-value">{{ summary.total_ink_cost }}</span>
+    </div>
+    <div class="analytics-kpi-label">{{ summary.date_from[:10] }} &mdash; {{ summary.date_to[:10] }}</div>
+  </div>
+</div>
+
+<!-- Recent Jobs Table -->
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-title" style="margin-bottom:12px;">Recent Print Jobs</div>
+  <div style="overflow-x:auto;">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>File</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Copies</th>
+          <th>Size (mm)</th>
+          <th>Progress</th>
+          <th>Time</th>
+          <th>Mode</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for job in recent %}
+        <tr>
+          <td style="color:var(--text-mut);">{{ job.id }}</td>
+          <td style="font-weight:500;">{{ job.name }}</td>
+          <td style="font-size:12px;">{{ job.start[:16] }}</td>
+          <td>
+            {% if job.status_code == 2 %}
+              <span class="badge badge-ok">{{ job.status }}</span>
+            {% elif job.status_code == 1 %}
+              <span class="badge badge-accent">{{ job.status }}</span>
+            {% elif job.status_code == 3 or job.status_code == 4 %}
+              <span class="badge badge-err">{{ job.status }}</span>
+            {% else %}
+              <span class="badge badge-mut">{{ job.status }}</span>
+            {% endif %}
+          </td>
+          <td>{{ job.copies_done }}/{{ job.copies_total }}</td>
+          <td>{{ job.width_mm }}&times;{{ job.length_mm }}</td>
+          <td>{{ job.progress }}%</td>
+          <td>{{ job.time_s }}s</td>
+          <td style="font-size:11px;color:var(--text-mut);">{{ job.pass_mode }}</td>
+        </tr>
+        {% endfor %}
+        {% if not recent %}
+        <tr><td colspan="9" style="text-align:center;color:var(--text-mut);padding:20px;">No jobs recorded</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Daily Stats + Ink side by side -->
+<div class="chart-grid">
+
+  <!-- Daily Production -->
+  <div class="card">
+    <div class="card-title" style="margin-bottom:12px;">Daily Production</div>
+    <table class="data-table">
+      <thead>
+        <tr><th>Date</th><th>Jobs</th><th>Designs</th><th>Copies</th><th>Area (m&sup2;)</th><th>Ink</th></tr>
+      </thead>
+      <tbody>
+        {% for d in daily %}
+        <tr>
+          <td>{{ d.date }}</td>
+          <td>{{ d.jobs }}</td>
+          <td>{{ d.designs }}</td>
+          <td>{{ d.copies }}</td>
+          <td>{{ d.area_m2 }}</td>
+          <td>{{ d.ink_cost }}</td>
+        </tr>
+        {% endfor %}
+        {% if not daily %}
+        <tr><td colspan="6" style="text-align:center;color:var(--text-mut);">No data</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Ink Consumption -->
+  <div class="card">
+    <div class="card-title" style="margin-bottom:12px;">Ink Consumption by Channel</div>
+    {% if ink %}
+    <div class="ink-consumption-bars">
+      {% for ch in ink %}
+      {% set max_cost = ink[0].print_cost if ink[0].print_cost > 0 else 1 %}
+      <div class="ink-cons-row">
+        <div class="ink-cons-label">{{ ch.channel }}</div>
+        <div class="ink-cons-track">
+          <div class="ink-cons-fill ink-fill {{ ch.channel|lower }}"
+               style="width:{{ (ch.print_cost / max_cost * 100)|round|int }}%"></div>
+        </div>
+        <div class="ink-cons-val">{{ ch.print_cost }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;color:var(--text-mut);padding:20px;">No ink data</div>
+    {% endif %}
+  </div>
+
+</div>
+
+{% endif %}
