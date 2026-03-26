@@ -4,9 +4,23 @@
 <div class="empty-state" style="padding:40px;">
   <i data-lucide="alert-circle"></i>
   <div style="font-size:14px;color:var(--text-sec);margin-top:8px;">No report data available</div>
-  <div style="font-size:12px;color:var(--text-mut);">Agent may not have StatisticData.db configured</div>
+  <div style="font-size:12px;color:var(--text-mut);">Agent may not have history data configured</div>
 </div>
 {% else %}
+
+<!-- Source badge -->
+<div style="margin-bottom:12px;">
+  {% if summary.source == 'sqlite' %}
+    <span class="badge badge-ok">StatisticData.db</span>
+  {% elif summary.source == 'ini' %}
+    <span class="badge badge-info">Daily Stats (INI)</span>
+  {% else %}
+    <span class="badge badge-mut">No History</span>
+  {% endif %}
+  <span style="font-size:11px;color:var(--text-mut);margin-left:8px;">
+    {{ summary.date_from[:10] if summary.date_from else '' }} &mdash; {{ summary.date_to[:10] if summary.date_to else '' }}
+  </span>
+</div>
 
 <!-- KPI Summary -->
 <div class="grid-kpi" style="margin-bottom:20px;">
@@ -17,6 +31,15 @@
     </div>
     <div class="analytics-kpi-label">{{ summary.completed }} completed</div>
   </div>
+  {% if summary.source == 'ini' %}
+  <div class="card">
+    <div class="card-title">Total Planned</div>
+    <div style="margin-top:8px;">
+      <span class="analytics-kpi-value">{{ summary.total_planned }}</span>
+    </div>
+    <div class="analytics-kpi-label">{{ summary.days_tracked }} days tracked</div>
+  </div>
+  {% else %}
   <div class="card">
     <div class="card-title">Unique Designs</div>
     <div style="margin-top:8px;">
@@ -24,24 +47,31 @@
     </div>
     <div class="analytics-kpi-label">Different files printed</div>
   </div>
+  {% endif %}
   <div class="card">
-    <div class="card-title">Total Area</div>
+    <div class="card-title">{% if summary.source == 'sqlite' %}Total Area{% else %}Days Tracked{% endif %}</div>
     <div style="margin-top:8px;">
+      {% if summary.source == 'sqlite' %}
       <span class="analytics-kpi-value">{{ summary.total_area_m2 }}</span>
       <span class="analytics-kpi-unit">m&sup2;</span>
+      {% else %}
+      <span class="analytics-kpi-value">{{ summary.days_tracked }}</span>
+      <span class="analytics-kpi-unit">days</span>
+      {% endif %}
     </div>
-    <div class="analytics-kpi-label">{{ summary.total_time_display }} print time</div>
+    <div class="analytics-kpi-label">{% if summary.source == 'sqlite' %}{{ summary.total_time_display }} print time{% else %}Production days{% endif %}</div>
   </div>
   <div class="card">
-    <div class="card-title">Ink Cost</div>
+    <div class="card-title">Total Ink</div>
     <div style="margin-top:8px;">
       <span class="analytics-kpi-value">{{ summary.total_ink_cost }}</span>
     </div>
-    <div class="analytics-kpi-label">{{ summary.date_from[:10] }} &mdash; {{ summary.date_to[:10] }}</div>
+    <div class="analytics-kpi-label">Ink consumption</div>
   </div>
 </div>
 
-<!-- Recent Jobs Table -->
+<!-- Recent Jobs Table (SQLite source only) -->
+{% if recent %}
 <div class="card" style="margin-bottom:20px;">
   <div class="card-title" style="margin-bottom:12px;">Recent Print Jobs</div>
   <div style="overflow-x:auto;">
@@ -90,6 +120,7 @@
     </table>
   </div>
 </div>
+{% endif %}
 
 <!-- Daily Stats + Ink side by side -->
 <div class="chart-grid">
@@ -99,16 +130,26 @@
     <div class="card-title" style="margin-bottom:12px;">Daily Production</div>
     <table class="data-table">
       <thead>
+        {% if summary.source == 'ini' %}
+        <tr><th>Date</th><th>Printed</th><th>Planned</th><th>Remaining</th><th>Ink</th></tr>
+        {% else %}
         <tr><th>Date</th><th>Jobs</th><th>Designs</th><th>Copies</th><th>Area (m&sup2;)</th><th>Ink</th></tr>
+        {% endif %}
       </thead>
       <tbody>
         {% for d in daily %}
         <tr>
           <td>{{ d.date }}</td>
+          {% if summary.source == 'ini' %}
+          <td>{{ d.jobs }}</td>
+          <td>{{ d.copies }}</td>
+          <td>{{ d.remaining if d.remaining is defined else '' }}</td>
+          {% else %}
           <td>{{ d.jobs }}</td>
           <td>{{ d.designs }}</td>
           <td>{{ d.copies }}</td>
           <td>{{ d.area_m2 }}</td>
+          {% endif %}
           <td>{{ d.ink_cost }}</td>
         </tr>
         {% endfor %}
