@@ -31,8 +31,8 @@ async def job_dispatch_loop(
                 from agent.registration import get_registered_printer_id
                 agent_printer_id = get_registered_printer_id()
 
-            # Long-poll: blocks up to 30s, returns instantly when job appears
-            params = f"printer_type={printer_type}&timeout=30"
+            # Long-poll: blocks up to 10s, returns instantly when job appears
+            params = f"printer_type={printer_type}&timeout=10"
             if agent_printer_id:
                 params += f"&printer_id={agent_printer_id}"
             url = f"{dashboard_url}/api/jobs/next?{params}"
@@ -40,8 +40,12 @@ async def job_dispatch_loop(
             req = urllib.request.Request(url)
             req.add_header("Accept", "application/json")
 
-            with urllib.request.urlopen(req, timeout=35, context=_ssl_ctx) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
+            with urllib.request.urlopen(req, timeout=15, context=_ssl_ctx) as resp:
+                body = resp.read().decode("utf-8", errors="replace")
+                if not body or not body.strip():
+                    await asyncio.sleep(2)
+                    continue
+                data = json.loads(body)
 
             job = data.get("job")
             if not job:
