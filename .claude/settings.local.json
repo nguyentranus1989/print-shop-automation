@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh run:*)",
+      "Bash(cat .github/workflows/*.yml)",
+      "Bash(cat .github/workflows/*.yaml)",
+      "Bash(gh secret:*)",
+      "Bash(git log:*)",
+      "WebFetch(domain:134.199.201.228)"
+    ]
+  }
+}

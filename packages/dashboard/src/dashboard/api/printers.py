@@ -342,6 +342,30 @@ async def control_printer(
 router.add_api_route("/{printer_id}/control", control_printer, methods=["POST"])
 
 
+async def browse_files(
+    printer_id: int,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """POST /api/printers/{id}/browse — proxy file browse to agent (opens native dialog)."""
+    import httpx
+
+    printer = db.query(Printer).filter(Printer.id == printer_id).first()
+    if printer is None:
+        raise HTTPException(status_code=404, detail="Printer not found")
+
+    try:
+        async with httpx.AsyncClient(verify=False, timeout=120.0) as client:
+            resp = await client.post(f"{printer.agent_url}/files/browse")
+            if resp.status_code == 204:
+                return {"path": None}
+            return resp.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Agent unreachable: {e}")
+
+
+router.add_api_route("/{printer_id}/browse", browse_files, methods=["POST"])
+
+
 async def printer_sse(request: Request) -> StreamingResponse:
     """GET /api/printers/sse — SSE stream of printer status updates."""
     manager = _get_manager()

@@ -176,30 +176,23 @@ function openFileBrowser() {
   if (!sel || !sel.value) { alert('Select a printer first'); return; }
   var printerId = sel.value.split('|')[0];
 
-  fetch('/api/printers', {headers:{'Accept':'application/json'}})
-    .then(function(r){return r.json()})
-    .then(function(printers){
-      var p = printers.find(function(x){return String(x.id) === printerId});
-      if (!p) { alert('Printer not found'); return; }
+  var btn = document.querySelector('[onclick="openFileBrowser()"]');
+  if (btn) { btn.textContent = 'Waiting...'; btn.disabled = true; }
 
-      // Open native Windows file dialog on the agent machine
-      var btn = document.querySelector('[onclick="openFileBrowser()"]');
-      if (btn) { btn.textContent = 'Waiting...'; btn.disabled = true; }
-
-      fetch(p.agent_url + '/files/browse', {method:'POST'})
-        .then(function(r){
-          if (r.status === 204) return null;
-          return r.json();
-        })
-        .then(function(data){
-          if (data && data.path) {
-            document.getElementById('prn-path-input').value = data.path;
-          }
-        })
-        .catch(function(e){ alert('Browse failed: ' + e.message); })
-        .finally(function(){
-          if (btn) { btn.textContent = 'Browse'; btn.disabled = false; }
-        });
+  // Go through dashboard proxy (avoids cross-origin issues)
+  fetch('/api/printers/' + printerId + '/browse', {method:'POST'})
+    .then(function(r){
+      if (r.status === 204) return null;
+      return r.json();
+    })
+    .then(function(data){
+      if (data && data.path) {
+        document.getElementById('prn-path-input').value = data.path;
+      }
+    })
+    .catch(function(e){ alert('Browse failed: ' + e.message); })
+    .finally(function(){
+      if (btn) { btn.textContent = 'Browse'; btn.disabled = false; }
     });
 }
 </script>
