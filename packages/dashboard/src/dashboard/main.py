@@ -16,6 +16,7 @@ from fastapi.templating import Jinja2Templates
 
 from dashboard.api.printers import router as printers_router, set_agent_manager
 from dashboard.api.jobs import router as jobs_router
+from dashboard.api.job_notify import router as job_notify_router
 from dashboard.api.analytics import router as analytics_router
 from dashboard.db.database import init_db, SessionLocal
 from dashboard.services.agent_manager import AgentManager
@@ -68,6 +69,7 @@ def _make_app() -> FastAPI:
     # API routes
     app.include_router(printers_router)
     app.include_router(jobs_router)
+    app.include_router(job_notify_router)
     app.include_router(analytics_router)
 
     # --- HTML page routes -----------------------------------------

@@ -130,6 +130,8 @@ router.add_api_route("", list_jobs, methods=["GET"])
 
 def create_job(req: CreateJobRequest, db: Session = Depends(get_db)) -> dict[str, Any]:
     """POST /api/jobs — create a new print job."""
+    from dashboard.api.job_notify import notify_new_job
+
     queue = JobQueue(db)
     job = queue.add_job(
         order_id=req.order_id,
@@ -139,6 +141,10 @@ def create_job(req: CreateJobRequest, db: Session = Depends(get_db)) -> dict[str
         copies=req.copies,
         notes=req.notes,
     )
+
+    # Wake up any agents waiting via long-poll
+    notify_new_job()
+
     return _job_to_dict(job)
 
 

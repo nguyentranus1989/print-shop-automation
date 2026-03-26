@@ -1,4 +1,4 @@
-"""Job dispatch loop — polls dashboard for pending jobs and injects them."""
+"""Job dispatch — uses long-polling for near-instant job pickup."""
 
 from __future__ import annotations
 
@@ -20,49 +20,33 @@ async def job_dispatch_loop(
     interval: float = 2.0,
     agent_printer_id: int | None = None,
 ) -> None:
-    """Poll dashboard for pending jobs, inject them via backend.
-
-    Polls every `interval` seconds. After processing a job, immediately
-    checks for more (no wait). This gives near-instant pickup for batches.
-    """
+    """Long-poll dashboard for jobs. Picks up instantly when job is created."""
     await asyncio.sleep(3)
-    print(f"[dispatch] Started — polling every {interval}s", flush=True)
+    print("[dispatch] Started — waiting for jobs (long-poll)", flush=True)
 
     while True:
-        processed = False
         try:
-            # Resolve our printer_id if not set yet
+            # Resolve printer_id if not known
             if agent_printer_id is None:
                 from agent.registration import get_registered_printer_id
                 agent_printer_id = get_registered_printer_id()
 
-            # Get pending jobs
-            url = f"{dashboard_url}/api/jobs?status=pending&printer_type={printer_type}"
+            # Long-poll: blocks up to 30s, returns instantly when job appears
+            params = f"printer_type={printer_type}&timeout=30"
+            if agent_printer_id:
+                params += f"&printer_id={agent_printer_id}"
+            url = f"{dashboard_url}/api/jobs/next?{params}"
+
             req = urllib.request.Request(url)
             req.add_header("Accept", "application/json")
 
-            with urllib.request.urlopen(req, timeout=5, context=_ssl_ctx) as resp:
-                jobs = json.loads(resp.read().decode("utf-8"))
+            with urllib.request.urlopen(req, timeout=35, context=_ssl_ctx) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
 
-            if not jobs:
-                await asyncio.sleep(interval)
-                continue
+            job = data.get("job")
+            if not job:
+                continue  # timeout, no job — retry immediately
 
-            # Filter: pick jobs assigned to us or unassigned
-            my_jobs = []
-            for j in jobs:
-                pid = j.get("printer_id")
-                if pid is None:
-                    my_jobs.append(j)
-                elif agent_printer_id and pid == agent_printer_id:
-                    my_jobs.append(j)
-
-            if not my_jobs:
-                await asyncio.sleep(interval)
-                continue
-
-            # Process first job
-            job = my_jobs[0]
             job_id = job["id"]
             prn_path = job["prn_path"]
             order_id = job.get("order_id", "unknown")
@@ -83,18 +67,14 @@ async def job_dispatch_loop(
                 _patch_job(dashboard_url, job_id, "failed", "Injection failed")
                 print(f"[dispatch] Job {order_id} — FAILED", flush=True)
 
-            processed = True
+            # Check for more jobs immediately (batch mode)
+            await asyncio.sleep(0.5)
 
         except urllib.error.URLError:
-            pass
+            await asyncio.sleep(5)  # dashboard unreachable, retry
         except Exception as e:
             print(f"[dispatch] Error: {e}", flush=True)
-
-        # If we just processed a job, check again immediately (batch mode)
-        if processed:
-            await asyncio.sleep(0.5)
-        else:
-            await asyncio.sleep(interval)
+            await asyncio.sleep(2)
 
 
 def _patch_job(dashboard_url: str, job_id: str, status: str, error_msg: str | None = None) -> None:
