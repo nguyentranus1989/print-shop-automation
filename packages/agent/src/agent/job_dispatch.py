@@ -17,25 +17,26 @@ async def job_dispatch_loop(
     dashboard_url: str,
     printer_type: str,
     inject_fn,
-    interval: float = 5.0,
+    interval: float = 2.0,
     agent_printer_id: int | None = None,
 ) -> None:
     """Poll dashboard for pending jobs, inject them via backend.
 
-    Args:
-        dashboard_url: Dashboard base URL (e.g. http://localhost:8000)
-        printer_type: Filter jobs by this type (e.g. "dtf")
-        inject_fn: async callable(prn_path, job_name) -> bool
-        interval: Seconds between polls
-        agent_printer_id: This agent's printer ID in dashboard DB
+    Polls every `interval` seconds. After processing a job, immediately
+    checks for more (no wait). This gives near-instant pickup for batches.
     """
-    # Wait for agent to fully start
     await asyncio.sleep(3)
-    print(f"[dispatch] Started — polling {dashboard_url} for {printer_type} jobs every {interval}s", flush=True)
+    print(f"[dispatch] Started — polling every {interval}s", flush=True)
 
     while True:
+        processed = False
         try:
-            # Get pending jobs for our printer type
+            # Resolve our printer_id if not set yet
+            if agent_printer_id is None:
+                from agent.registration import get_registered_printer_id
+                agent_printer_id = get_registered_printer_id()
+
+            # Get pending jobs
             url = f"{dashboard_url}/api/jobs?status=pending&printer_type={printer_type}"
             req = urllib.request.Request(url)
             req.add_header("Accept", "application/json")
@@ -47,36 +48,28 @@ async def job_dispatch_loop(
                 await asyncio.sleep(interval)
                 continue
 
-            # Resolve our printer_id if not set yet
-            if agent_printer_id is None:
-                from agent.registration import get_registered_printer_id
-                agent_printer_id = get_registered_printer_id()
-
             # Filter: pick jobs assigned to us or unassigned
             my_jobs = []
             for j in jobs:
                 pid = j.get("printer_id")
                 if pid is None:
-                    my_jobs.append(j)  # unassigned — any printer of this type can take it
+                    my_jobs.append(j)
                 elif agent_printer_id and pid == agent_printer_id:
-                    my_jobs.append(j)  # explicitly assigned to us
+                    my_jobs.append(j)
 
             if not my_jobs:
                 await asyncio.sleep(interval)
                 continue
 
-            # Process first matching job
+            # Process first job
             job = my_jobs[0]
             job_id = job["id"]
             prn_path = job["prn_path"]
             order_id = job.get("order_id", "unknown")
 
             print(f"[dispatch] Picking up job {order_id} — {prn_path}", flush=True)
-
-            # Update status to "injecting"
             _patch_job(dashboard_url, job_id, "injecting")
 
-            # Inject via backend
             try:
                 success = await inject_fn(prn_path, order_id)
             except Exception as e:
@@ -90,12 +83,18 @@ async def job_dispatch_loop(
                 _patch_job(dashboard_url, job_id, "failed", "Injection failed")
                 print(f"[dispatch] Job {order_id} — FAILED", flush=True)
 
+            processed = True
+
         except urllib.error.URLError:
             pass
         except Exception as e:
             print(f"[dispatch] Error: {e}", flush=True)
 
-        await asyncio.sleep(interval)
+        # If we just processed a job, check again immediately (batch mode)
+        if processed:
+            await asyncio.sleep(0.5)
+        else:
+            await asyncio.sleep(interval)
 
 
 def _patch_job(dashboard_url: str, job_id: str, status: str, error_msg: str | None = None) -> None:
