@@ -1,12 +1,10 @@
-"""DTF printer backend — proven single-shot DLL injection.
+"""DTF printer backend — DLL injection + named pipe vtable control.
 
-Uses the tested inject_final_v3.dll approach:
-1. Write PRN path to inject_config.txt
-2. Inject DLL into PrintExp (one-shot, does AddFile + 0x7F4 + exits)
-3. Read inject_log.txt for result
-4. Status via separate inject_status.dll
+Job injection: single-shot DLL (inject_config.txt -> AddFile + 0x7F4).
+Control: Named pipe to persistent PrintFlow Control DLL (vtable calls),
+         falls back to WM_COMMAND if pipe not available.
 
-Target: PrintExp DTF v5.7.6.5.103 (64-bit)
+Target: PrintExp DTF v5.7.6.5.103, UV v5.7.9, DTF v5.8.2 (all x64)
 """
 
 import asyncio
@@ -16,6 +14,7 @@ import time
 
 from common.models.printer import PrinterStatus, PrinterType
 from common.protocols.wm_command import DTF_BUTTONS, WMCommandController
+from agent.printer.named_pipe_client import NamedPipeClient
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +49,7 @@ class DTFBackend:
         self.printexp_exe = printexp_exe
         self._printexp_connected = False
         self._wm = WMCommandController(buttons=button_map or DTF_BUTTONS)
+        self._pipe = NamedPipeClient()
 
     def _find_pid(self) -> int | None:
         """Find PrintExp_X64.exe PID."""
@@ -192,6 +192,10 @@ class DTFBackend:
             try: os.remove(temp_dll)
             except: pass
 
+            # Persist job after successful injection
+            if success:
+                self._persist_job(prn_path)
+
             return success
 
         try:
@@ -200,20 +204,75 @@ class DTFBackend:
             logger.error("inject_job error: %s", e)
             return False
 
+    def _persist_job(self, prn_path: str) -> None:
+        """Trigger job persistence after successful injection.
+
+        For DTF v5.8.2: sends SAVE via named pipe (PrintExp writes Unicode TSKF).
+        For DTF v5.7.6 / UV: pipe SAVE is a no-op, persistence handled externally.
+        """
+        try:
+            result = self._pipe.save()
+            if result and result.get("success"):
+                logger.info("Job persisted via pipe SAVE command")
+            else:
+                logger.debug("Pipe SAVE not available — persistence handled externally")
+        except Exception as e:
+            logger.debug("Persist attempt: %s", e)
+
     async def get_status(self) -> PrinterStatus:
-        """Check if PrintExp is running."""
+        """Check PrintExp status — pipe (vtable) if available, else process check."""
         pid = self._find_pid()
         connected = pid is not None
+
+        printing = False
+        # Try named pipe for richer status
+        if connected:
+            pipe_status = await asyncio.to_thread(self._pipe.status)
+            if pipe_status and pipe_status.get("connected"):
+                printing = pipe_status.get("printing", False)
 
         return PrinterStatus(
             type=PrinterType.DTF,
             connected=connected,
-            printing=False,
+            printing=printing,
             current_job=None,
         )
 
     async def send_command(self, command: str) -> bool:
-        """Send WM_COMMAND to PrintExp window."""
+        """Send command via named pipe (vtable), fallback to WM_COMMAND."""
+        # Map dashboard command names to pipe commands
+        pipe_map = {
+            "pause": "PAUSE",
+            "cancel": "CANCEL",
+            "check": "CHECK",
+            "clean": "CLEAN",
+            "home_x": "HOME_X",
+            "home_y": "HOME_Y",
+            "print": "PRINT",
+            "print_start": "PRINT",
+        }
+
+        pipe_cmd = pipe_map.get(command)
+        if pipe_cmd:
+            result = await asyncio.to_thread(self._pipe.send, pipe_cmd)
+            if result and result.get("success"):
+                logger.info("Pipe command OK: %s", command)
+                return True
+            if result and "error" not in result:
+                # Pipe responded but command failed — don't fallback
+                logger.warning("Pipe command failed: %s -> %s", command, result)
+                return False
+            # Pipe not available — fall through to WM_COMMAND
+            logger.debug("Pipe not available for %s, falling back to WM_COMMAND", command)
+
+        # Handle resume specially (not in standard WM_COMMAND maps)
+        if command == "resume":
+            result = await asyncio.to_thread(self._pipe.send, "RESUME")
+            if result and result.get("success"):
+                return True
+            return False
+
+        # WM_COMMAND fallback
         try:
             return await asyncio.get_event_loop().run_in_executor(
                 None, self._wm.send_named, command

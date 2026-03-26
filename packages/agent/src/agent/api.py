@@ -22,6 +22,7 @@ from starlette.middleware.cors import CORSMiddleware
 from common.models.job import Job
 from common.models.printer import PrinterStatus
 from agent.printer.backend import PrinterBackend
+from agent.printer.uv_print_mode_service import UVPrintModeService
 from agent.reports import router as reports_router
 
 app = FastAPI(title="PrintFlow Agent", version="0.1.0")
@@ -32,6 +33,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 _backend: PrinterBackend | None = None
 _printer_name: str = "PrintFlow-Agent"
 _printer_type: str = "dtg"
+_print_mode_service: UVPrintModeService | None = None
 
 
 def set_backend(backend: PrinterBackend) -> None:
@@ -45,6 +47,12 @@ def set_printer_info(name: str, printer_type: str) -> None:
     global _printer_name, _printer_type
     _printer_name = name
     _printer_type = printer_type
+
+
+def set_print_mode_service(service: UVPrintModeService) -> None:
+    """Inject the UV print mode service (called from main.py for UV agents)."""
+    global _print_mode_service
+    _print_mode_service = service
 
 
 def _get_backend() -> PrinterBackend:
@@ -68,6 +76,12 @@ class CommandRequest(BaseModel):
     """POST /control/{command} request body (optional payload)."""
 
     payload: dict[str, Any] = {}
+
+
+class PrintModeRequest(BaseModel):
+    """POST /print-mode request body."""
+
+    preset: str
 
 
 # --- Routes -----------------------------------------------------------
@@ -235,6 +249,30 @@ async def send_control(command: str) -> dict[str, Any]:
     if not ok:
         raise HTTPException(status_code=500, detail=f"Command '{command}' failed")
     return {"success": True, "command": command}
+
+
+# --- Print Mode (UV only) ---------------------------------------------
+
+@app.get("/print-mode")
+async def get_print_mode() -> dict[str, Any]:
+    """Return current print mode and available presets (UV printers only)."""
+    if _print_mode_service is None:
+        raise HTTPException(status_code=404, detail="Print modes only available for UV printers")
+    current = _print_mode_service.get_current_mode()
+    presets = _print_mode_service.get_presets()
+    return {"current": current, "presets": presets}
+
+
+@app.post("/print-mode")
+async def set_print_mode(req: PrintModeRequest) -> dict[str, Any]:
+    """Apply a print mode preset (UV printers only)."""
+    if _print_mode_service is None:
+        raise HTTPException(status_code=404, detail="Print modes only available for UV printers")
+
+    result = await asyncio.to_thread(_print_mode_service.apply_preset, req.preset)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error", "Failed"))
+    return result
 
 
 # --- WebSocket real-time status stream --------------------------------

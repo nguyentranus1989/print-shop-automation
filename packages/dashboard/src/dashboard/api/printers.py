@@ -342,6 +342,64 @@ async def control_printer(
 router.add_api_route("/{printer_id}/control", control_printer, methods=["POST"])
 
 
+class PrintModeRequest(BaseModel):
+    preset: str
+
+
+async def get_print_mode(
+    printer_id: int,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """GET /api/printers/{id}/print-mode — proxy to agent for UV print mode."""
+    import httpx
+
+    printer = db.query(Printer).filter(Printer.id == printer_id).first()
+    if printer is None:
+        raise HTTPException(status_code=404, detail="Printer not found")
+
+    try:
+        async with httpx.AsyncClient(verify=False, timeout=10.0) as client:
+            resp = await client.get(f"{printer.agent_url}/print-mode")
+            if resp.status_code == 404:
+                return {"available": False}
+            resp.raise_for_status()
+            data = resp.json()
+            data["available"] = True
+            return data
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Agent unreachable: {e}")
+
+
+router.add_api_route("/{printer_id}/print-mode", get_print_mode, methods=["GET"])
+
+
+async def set_print_mode(
+    printer_id: int,
+    req: PrintModeRequest,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """POST /api/printers/{id}/print-mode — proxy preset apply to agent."""
+    import httpx
+
+    printer = db.query(Printer).filter(Printer.id == printer_id).first()
+    if printer is None:
+        raise HTTPException(status_code=404, detail="Printer not found")
+
+    try:
+        async with httpx.AsyncClient(verify=False, timeout=15.0) as client:
+            resp = await client.post(
+                f"{printer.agent_url}/print-mode",
+                json={"preset": req.preset},
+            )
+            resp.raise_for_status()
+            return resp.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Agent unreachable: {e}")
+
+
+router.add_api_route("/{printer_id}/print-mode", set_print_mode, methods=["POST"])
+
+
 async def browse_files(
     printer_id: int,
     db: Session = Depends(get_db),

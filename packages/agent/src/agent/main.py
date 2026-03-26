@@ -10,7 +10,7 @@ import uvicorn
 
 from common.config import AgentConfig
 from common.models.printer import PrinterType
-from agent.api import app, set_backend, set_printer_info
+from agent.api import app, set_backend, set_printer_info, set_print_mode_service
 from agent.printer.mock import MockBackend
 from agent.printer.dtg import DTGBackend
 from agent.printer.dtf import DTFBackend
@@ -114,6 +114,12 @@ def main() -> None:
                 from common.protocols.wm_command import UV_BUTTONS
                 backend = DTFBackend(printexp_exe=config.printexp_path,
                                      button_map=UV_BUTTONS)
+                # Wire UV print mode service (direction + mirror + ink presets)
+                if config.printexp_path:
+                    import os
+                    from agent.printer.uv_print_mode_service import UVPrintModeService
+                    printexp_dir = os.path.dirname(config.printexp_path)
+                    set_print_mode_service(UVPrintModeService(printexp_dir))
                 print(f"[agent] Real mode — UV (DLL injection)", flush=True)
             else:
                 backend = DTGBackend(config)

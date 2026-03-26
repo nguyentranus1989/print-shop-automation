@@ -28,6 +28,14 @@ function selectPrinterTab(id, ptype, btn) {
   var labels = {dtg:'DTG', dtf:'DTF', uv:'UV'};
   document.getElementById('active-printer-badge').textContent = labels[ptype] || ptype.toUpperCase();
   document.getElementById('z-controls').style.display = ptype === 'uv' ? 'flex' : 'none';
+  /* Show/hide print mode section for UV printers */
+  var pmSection = document.getElementById('print-mode-section');
+  if (ptype === 'uv') {
+    pmSection.style.display = '';
+    loadPrintModes();
+  } else {
+    pmSection.style.display = 'none';
+  }
 }
 
 function setStep(val, btn) {
@@ -76,4 +84,59 @@ function updatePosFromCards(evt) {
 function formatPos(val, len) {
   var s = (val != null ? parseFloat(val).toFixed(1) : '0.0');
   return s.padStart(len, '0');
+}
+
+/* ── Print Mode (UV only) ─────────────────────────────── */
+
+function loadPrintModes() {
+  if (!activePrinter) return;
+  fetch('/api/printers/' + activePrinter + '/print-mode')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.available) return;
+      var sel = document.getElementById('print-mode-select');
+      sel.innerHTML = '';
+      (data.presets || []).forEach(function(p) {
+        var opt = document.createElement('option');
+        opt.value = p.name;
+        opt.textContent = p.name + ' — ' + p.desc;
+        sel.appendChild(opt);
+      });
+      /* Select current active preset */
+      if (data.current && data.current.active_preset) {
+        sel.value = data.current.active_preset;
+      }
+      /* Show current info */
+      var info = document.getElementById('print-mode-info');
+      if (data.current) {
+        info.textContent = data.current.direction + ' | Mirror: ' + data.current.mirror + ' | Speed: ' + data.current.speed + '%';
+      }
+    })
+    .catch(function() {});
+}
+
+function applyPrintMode(preset) {
+  if (!activePrinter || !preset) return;
+  var statusEl = document.getElementById('print-mode-status');
+  statusEl.textContent = 'Applying…';
+  fetch('/api/printers/' + activePrinter + '/print-mode', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({preset: preset})
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        statusEl.textContent = 'Applied: ' + (data.desc || preset);
+        var info = document.getElementById('print-mode-info');
+        info.textContent = data.ink_applied ? 'Ink channels updated' : 'INI updated (ink set on next inject)';
+      } else {
+        statusEl.textContent = 'Error: ' + (data.error || 'unknown');
+      }
+      setTimeout(function() { statusEl.textContent = ''; }, 3000);
+    })
+    .catch(function() {
+      statusEl.textContent = 'Failed — agent unreachable';
+      setTimeout(function() { statusEl.textContent = ''; }, 3000);
+    });
 }
