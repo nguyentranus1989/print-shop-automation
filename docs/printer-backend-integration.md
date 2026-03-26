@@ -1,7 +1,9 @@
 # PrintExp Backend Integration Guide
 
-> DLL injection + memory patching for DTF and UV PrintExp versions.
-> Support for PrintExp v5.7.6 (DTF) and v5.7.9.4.5008 (UV).
+> Deep technical reference for DLL injection backends (DTF and UV).
+> Covers memory structures, vtable offsets, and file vector management.
+
+**See also:** [printer-support-matrix.md](./printer-support-matrix.md) for overall feature comparison across all 4 builds (DTG, DTF v5.7.6, DTF v5.8.2, UV).
 
 ---
 
@@ -9,26 +11,30 @@
 
 The PrintFlow agent controls PrintExp printers via three mechanisms:
 
-1. **TCP 9100** — Raw PRN file injection (same for all versions)
-2. **Memory patching** — Filename injection into internal memory structures
-3. **Win32 PostMessage** — UI automation (print/pause/resume/cancel, axis movement)
+1. **TCP 9100** — Raw PRN file injection (works on all 4 builds)
+2. **Memory patching / DLL injection** — Filename injection into internal memory structures
+   - DTG (x86): WriteProcessMemory approach
+   - DTF v5.7.6 (x64): DLL injection via vtable[7]
+   - DTF v5.8.2 (x64): DLL injection via vtable[7] (offsets TBD)
+   - UV v5.7.9 (x64): DLL injection via vtable[9]
+3. **Win32 PostMessage** — UI automation (print/pause/resume/cancel, axis movement) — *not yet wired*
 
-This guide documents the **memory patching** approach, which differs significantly between DTF and UV backends.
+This guide documents the **DLL injection approach** for DTF and UV, which differs significantly between builds.
 
 ---
 
 ## Architecture Comparison
 
-| Component | DTF v5.7.6 | UV v5.7.9.4.5008 |
-|-----------|-----------|------------------|
-| **Global pointer offset** | `EXE+0x176B98` | `EXE+0x1D2F10` |
-| **CTaskManager access** | `appVt[22]` call | `device_obj+0x70` |
-| **AddFile vtable index** | `vtable[7]` | `vtable[9]` |
-| **File vector offset** | `+0x28` | `+0x08` |
-| **Display vector offset** | `+0x48` | `+0x28` |
-| **CTaskInfo struct size** | 0xB08 | 0xCA0 |
-| **HSKRipFile creator offset** | `+0x5B0` | `+0x140` |
-| **UI refresh message** | `0x7F4` | `0x7F4` (same) |
+| Component | DTF v5.7.6 | DTF v5.8.2 | UV v5.7.9.4.5008 |
+|-----------|-----------|-----------|------------------|
+| **Global pointer offset** | `EXE+0x176B98` | *TBD* | `EXE+0x1D2F10` |
+| **CTaskManager access** | `appVt[22]` call | *TBD* | `device_obj+0x70` |
+| **AddFile vtable index** | `vtable[7]` | `vtable[7]` | `vtable[9]` |
+| **File vector offset** | `+0x28` | *TBD* | `+0x08` |
+| **Display vector offset** | `+0x48` | *TBD* | `+0x28` |
+| **CTaskInfo struct size** | 0xB08 | *TBD* | 0xCA0 |
+| **HSKRipFile creator offset** | `+0x5B0` | *TBD* | `+0x140` |
+| **UI refresh message** | `0x7F4` | `0x7F4` (same) | `0x7F4` (same) |
 
 ---
 
@@ -356,9 +362,26 @@ Reference implementations in DTG_autommation repo:
 
 ---
 
+## DTF v5.8.2 (x64 Unicode) — TBD
+
+For DTF v5.8.2 offset discovery:
+
+1. Run Python memory scanner on actual v5.8.2 executable
+2. Search for signature patterns (same method as UV discovery)
+3. Identify global pointer (estimate: EXE+0x176B98, same as v5.7.6)
+4. Verify vtable indices and offsets
+5. Compile and test DLL injection on actual hardware
+6. Update offset table in this guide
+
+Expected variance from v5.7.6: ~5% (likely same vtable[7] approach, similar offsets).
+
+---
+
 ## Next Steps
 
-1. **Test on production UV hardware** — Verify AddFile/display vector injection
-2. **Integrate into PrintFlow agent** — Detect version, call appropriate backend
-3. **Error handling** — Graceful fallback if memory offsets shift (version change)
-4. **Logging & telemetry** — Track injection success/failure rates
+1. **Discover DTF v5.8.2 offsets** — Run memory scanner, update offset table
+2. **Test on production hardware** — Verify DTF v5.8.2 and UV DLL injection on actual printers
+3. **Integrate into PrintFlow agent** — Detect version, call appropriate backend
+4. **Wire job control** — Implement Print/Pause/Resume/Cancel (WM_COMMAND stubs)
+5. **Error handling** — Graceful fallback if memory offsets shift (version change)
+6. **Logging & telemetry** — Track injection success/failure rates

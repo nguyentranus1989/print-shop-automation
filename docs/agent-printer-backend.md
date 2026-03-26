@@ -1,16 +1,19 @@
 # Agent — Printer Backend Implementation
 
-> Guide for PrintFlow agent developers on calling DTF and UV injection backends.
+> Guide for PrintFlow agent developers on calling DTG/DTF/UV injection backends.
+
+**See also:** [printer-support-matrix.md](./printer-support-matrix.md) for feature comparison, statistics DB availability, and phase timeline.
 
 ---
 
 ## Quick Reference
 
-| Printer Type | Detection | Memory Backend | DLL Source | Status |
-|--------------|-----------|-----------------|------------|--------|
-| DTG | Exe name + version | WriteProcessMemory | N/A | Production |
-| DTF | File size ~8-9MB | DLL injection (vtable[7]) | DTG_automation/scripts/inject_dtf.dll | Production (2026-03-26) |
-| UV | File size >9.5MB | DLL injection (vtable[9]) | DTG_automation/scripts/inject_uv.dll | Production (2026-03-26) |
+| Printer Type | Build | Arch | Detection | Memory Backend | DLL Source | Status |
+|--------------|-------|------|-----------|-----------------|------------|--------|
+| DTG | v5.7.7.1.12 MULTIWS | x86 | Exe version | WriteProcessMemory | N/A | ✅ Production |
+| DTF | v5.7.6 | x64 | ~8-9MB | DLL injection (vtable[7]) | DTG_automation/scripts/inject_dtf.dll | ✅ Production |
+| DTF Unicode | v5.8.2.1.32 | x64 | ~10-11MB | DLL injection (vtable[7]) | *Offsets TBD* | 🚧 TODO |
+| UV | v5.7.9.4.5008 | x64 | >9.5MB | DLL injection (vtable[9]) | DTG_automation/scripts/inject_uv.dll | ✅ Production |
 
 ---
 
@@ -29,21 +32,32 @@ class PrinterType(str, Enum):
     UV = "uv"
     UNKNOWN = "unknown"
 
-def detect_printer_type(exe_path: str) -> PrinterType:
+def detect_printer_type(exe_path: str) -> str:
     """Auto-detect printer type from PrintExp.exe size."""
     try:
         stat = os.stat(exe_path)
         size_mb = stat.st_size / (1024 * 1024)
 
-        # Heuristics based on known builds
-        if size_mb > 9.5:
-            return PrinterType.UV  # v5.7.9.4.5008
-        elif 8.0 <= size_mb <= 9.5:
-            return PrinterType.DTF  # v5.7.6
+        # Heuristics based on known builds (approximate file sizes)
+        # DTG v5.7.7.1.12 (x86): ~6-7 MB
+        # DTF v5.7.6 (x64): ~8-9 MB
+        # DTF v5.8.2 (x64 Unicode): ~10-11 MB
+        # UV v5.7.9.4.5008 (x64): ~10-12 MB
+
+        if size_mb > 10.5:
+            # UV or DTF v5.8.2 — need PE version string to disambiguate
+            # For now, assume UV; DTF v5.8.2 will be explicitly configured
+            return "uv"
+        elif 9.5 <= size_mb <= 10.5:
+            # Ambiguous: could be UV or DTF v5.8.2
+            # Check PE version string or return based on config hint
+            return "dtf-v5.8.2"  # Best guess
+        elif 8.0 <= size_mb < 9.5:
+            return "dtf"  # DTF v5.7.6
         else:
-            return PrinterType.DTG  # 32-bit or earlier
+            return "dtg"  # DTG (x86) or unknown
     except Exception:
-        return PrinterType.UNKNOWN
+        return "unknown"
 ```
 
 ---
@@ -94,14 +108,19 @@ class PrinterBackend(ABC):
 class DTFBackend(PrinterBackend):
     """DTF PrintExp v5.7.6 backend — uses vtable[7] for AddFile."""
 
-    def __init__(self, config: BackendConfig):
+    def __init__(self, config: BackendConfig, version: str = "v5.7.6"):
         self.config = config
+        self.version = version  # "v5.7.6" or "v5.8.2"
         self.dll_path = self._get_dtf_dll()
 
     def _get_dtf_dll(self) -> Path:
         """Return path to DTF injection DLL."""
         # Load from DTG_automation shared location or embedded resource
-        dtf_dll = Path(__file__).parent / "dlls" / "inject_dtf.dll"
+        dll_name = f"inject_dtf_{self.version.replace('.', '_')}.dll"
+        dtf_dll = Path(__file__).parent / "dlls" / dll_name
+        if not dtf_dll.exists():
+            # Fallback: try generic inject_dtf.dll (same offsets may work)
+            dtf_dll = Path(__file__).parent / "dlls" / "inject_dtf.dll"
         if not dtf_dll.exists():
             # Fallback to DTG_automation repo
             dtf_dll = Path("../../../DTG_autommation/scripts/inject_dtf.dll")
@@ -172,12 +191,12 @@ class PrintExpConfig:
     exe_path: str
     tcp_port: int = 9100
     auto_detect: bool = True
-    printer_type: str = "auto"  # "auto", "dtg", "dtf", "uv"
+    printer_type: str = "auto"  # "auto", "dtg", "dtf", "dtf-v5.8.2", "uv"
 
     def get_printer_type(self) -> str:
         """Resolve printer type (auto-detect if 'auto')."""
         if self.auto_detect or self.printer_type == "auto":
-            return detect_printer_type(self.exe_path).value
+            return detect_printer_type(self.exe_path)
         return self.printer_type
 ```
 
@@ -366,14 +385,30 @@ logging.getLogger("agent.printer.backends").setLevel(logging.DEBUG)
 
 ---
 
-## Migration Path (DTG to DTF/UV)
+## Multi-Build Support & Migration Path
 
-1. Deploy new `inject_dtf.dll` and `inject_uv.dll` to `packages/agent/agent/dlls/`
-2. Update agent config: `printer.type = "auto"`
-3. Agent auto-detects on startup
-4. Log printer type for diagnostics
-5. Monitor injection success rates per printer type
-6. Phase out DTG WriteProcessMemory approach (if applicable)
+### Deployment Checklist
+
+1. **Deploy DLLs:**
+   - `packages/agent/agent/dlls/inject_dtf.dll` (v5.7.6, may also work for v5.8.2)
+   - `packages/agent/agent/dlls/inject_dtf_v5_8_2.dll` (once offsets discovered for v5.8.2)
+   - `packages/agent/agent/dlls/inject_uv.dll` (v5.7.9.4.5008)
+
+2. **Update agent config:** `printer.type = "auto"` (or explicit type)
+
+3. **Agent startup:**
+   - Auto-detects PrintExp.exe size
+   - Selects appropriate backend
+   - Logs detected printer type
+
+4. **Monitor & optimize:**
+   - Track injection success rates per printer type
+   - Log memory offsets used for diagnostics
+   - Report injection failures to DTG_automation team
+
+5. **Phase DTG approach (optional):**
+   - If all printers upgrade to x64 builds, deprecate WriteProcessMemory
+   - Maintain DTG support for legacy hardware
 
 ---
 

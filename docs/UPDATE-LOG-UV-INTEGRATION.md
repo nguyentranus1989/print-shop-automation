@@ -1,3 +1,22 @@
+# Documentation Updates — PrintFlow 4-Build Support (2026-03-26)
+
+## Latest: 4-Build Printer Support Matrix
+
+Created comprehensive `docs/printer-support-matrix.md` documenting:
+- All 4 target PrintExp builds (DTG v5.7.7, DTF v5.7.6, DTF v5.8.2, UV v5.7.9)
+- Feature comparison matrix (job queue, controls, print settings)
+- Statistics database (StatisticData.db) availability per build
+- Print History dashboard feature (UV & DTF v5.8.2 only)
+- Agent `/reports/*` endpoints for analytics
+- TSKF format writer for job persistence
+- Job Report CLI tool
+- Feature gaps and TODO items (job control, white/varnish, DTF v5.8.2 offsets)
+- Integration timeline (4 phases)
+
+Updated `README.md`, `docs/tech-stack.md`, `docs/printer-backend-integration.md`, `docs/agent-printer-backend.md` to reference 4-build support and clarify scope per build.
+
+---
+
 # Documentation Update — UV PrintExp Integration (2026-03-26)
 
 ## Summary

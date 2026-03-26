@@ -1,7 +1,8 @@
 # PrintFlow Tech Stack
 
-> Internal print shop automation tool bridging PodFactory (order management) with DTG printers via PrintExp.
+> Internal print shop automation tool bridging PodFactory (order management) with DTG/DTF/UV printers via PrintExp.
 > Windows-only deployment on printer workstation PCs (Windows 10/11).
+> Supports 4 PrintExp builds: DTG v5.7.7 (x86), DTF v5.7.6 & v5.8.2 (x64), UV v5.7.9 (x64).
 
 ## Architecture Summary
 
@@ -72,15 +73,21 @@ No third-party socket libraries needed. Python stdlib `socket` is sufficient for
 | API | Method | Usage |
 |---|---|---|
 | `PostMessageW` | **ctypes** | Send WM_COMMAND to PrintExp (print, pause, cancel, axis movement). |
-| `WriteProcessMemory` | **ctypes** | Memory patching for filename injection (legacy DTG approach). |
+| `WriteProcessMemory` | **ctypes** | Memory patching for filename injection (DTG x86 approach). |
 | `EnumWindows` / `EnumChildWindows` | **ctypes** | Find PrintExp HWND (changes each launch). |
 | `OpenProcess` | **ctypes** | Get process handle with `PROCESS_VM_WRITE \| PROCESS_VM_OPERATION`. |
 | `CreateToolhelp32Snapshot` | **ctypes** | Find PrintExp PID and DLL base addresses. |
-| **DLL Injection** | **ctypes** | Modern approach for DTF/UV — inject compiled DLL into PrintExp to access internal vtables and CTaskManager. |
+| **DLL Injection** | **ctypes** | Modern approach for DTF/UV x64 — inject compiled DLL into PrintExp to access internal vtables and CTaskManager. |
 
 **Why ctypes over pywin32:** Zero install dependency, ships with Python, sufficient for the handful of Win32 calls needed. No COM automation required.
 
-See [printer-backend-integration.md](./printer-backend-integration.md) for DTF/UV DLL injection details.
+**Multi-build support:**
+- DTG v5.7.7 (x86) — WriteProcessMemory via global pointer
+- DTF v5.7.6 (x64) — DLL injection with vtable[7] AddFile (offset: EXE+0x176B98)
+- DTF v5.8.2 (x64) — DLL injection with same method, offsets TBD
+- UV v5.7.9 (x64) — DLL injection with vtable[9] AddFile (offset: EXE+0x1D2F10)
+
+See [printer-support-matrix.md](./printer-support-matrix.md) for feature comparison and [printer-backend-integration.md](./printer-backend-integration.md) for DTF/UV DLL injection technical details.
 
 ## 7. HTTP Client
 

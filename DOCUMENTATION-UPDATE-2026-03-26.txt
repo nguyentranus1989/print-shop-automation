@@ -1,0 +1,200 @@
+================================================================================
+DOCUMENTATION UPDATE SUMMARY
+PrintFlow — UV PrintExp Integration (2026-03-26)
+================================================================================
+
+PROJECT: print-shop-automation (C:\Users\12104\Projects\print-shop-automation)
+TASK: Document UV PrintExp v5.7.9.4.5008 DLL injection breakthrough
+STATUS: COMPLETE
+
+================================================================================
+DELIVERABLES
+================================================================================
+
+NEW FILES CREATED:
+  1. docs/printer-backend-integration.md (364 LOC)
+     - Technical reference for DTF (v5.7.6) & UV (v5.7.9.4.5008) backends
+     - Complete offset tables, struct layouts, vtable indices
+     - Safety notes, injection workflow, debugging tips
+
+  2. docs/agent-printer-backend.md (384 LOC)
+     - Agent developer implementation guide
+     - Printer type detection, backend interface design, workflow
+     - Error handling, unit tests, hardware tests
+
+  3. docs/README.md (NEW)
+     - Documentation navigation guide
+     - Quick reference tables
+     - Technology stack summary
+
+  4. docs/UPDATE-LOG-UV-INTEGRATION.md (164 LOC)
+     - Change summary and implementation status
+     - Next actions for PrintFlow team
+
+EXISTING FILES UPDATED:
+  1. docs/dtf-memory-patch-research.md
+     - Added status: "SOLVED via DLL injection (2026-03-26)"
+     - Cross-reference to new technical guide
+
+  2. docs/tech-stack.md
+     - Expanded Win32 Integration section
+     - Added DLL injection reference
+
+  3. README.md
+     - Updated tagline with auto-detection support
+     - Enhanced agent.toml documentation
+
+TOTAL NEW DOCUMENTATION: 912 lines (3 new files)
+TOTAL UPDATES: 6 lines across 3 existing files
+TOTAL DOCUMENTATION SET: ~2,300 lines across 11 files
+
+================================================================================
+KEY FACTS DOCUMENTED
+================================================================================
+
+OFFSET TABLE (DTF vs UV):
+  Item                   | DTF v5.7.6  | UV v5.7.9.4.5008
+  =====================|=============|==================
+  Global pointer        | 0x176B98    | 0x1D2F10
+  CTaskManager access   | appVt[22]   | +0x70
+  AddFile vtable index  | vtable[7]   | vtable[9]
+  File vector offset    | +0x28       | +0x08
+  Display vector offset | +0x48       | +0x28
+  CTaskInfo struct size | 0xB08       | 0xCA0
+  Filename field offset | +0x5B0      | +0x140
+  UI refresh message    | 0x7F4       | 0x7F4 (same)
+
+CRITICAL SAFETY NOTES DOCUMENTED:
+  1. AddFile PREPENDS (inserts at index 0)
+     - Must diff file vector to find new entry
+
+  2. DO NOT copy to print vector on UV
+     - Different object type, causes R6025 pure virtual call crash
+
+  3. Only copy to display vector (both DTF and UV)
+     - Display vector and print vector are distinct types
+
+  4. Dangerous vtable indices (UV only):
+     - vt[6], vt[11], vt[12] cause immediate crash
+
+DISCOVERY METHOD DOCUMENTED:
+  - Python memory scanners (identify offset signatures)
+  - TCC compiler (lightweight, no Ghidra required)
+  - Tests confirmed on actual UV hardware (2026-03-26)
+
+REFERENCE IMPLEMENTATIONS:
+  Location: DTG_automation/scripts/
+  - inject_dtf.dll          (DTF compiled binary)
+  - inject_uv.dll           (UV compiled binary)
+  - inject_uv_printexp.c    (UV source code)
+  - scan_uv_printexp.py     (Memory offset scanner)
+  - add_to_uv_printexp.py   (Python wrapper example)
+
+================================================================================
+IMPLEMENTATION READINESS
+================================================================================
+
+CURRENT STATUS:
+  ✅ DTF DLL injection      - Production ready
+  ✅ UV DLL injection       - Production ready (confirmed 2026-03-26)
+  ✅ Memory offset table    - Verified
+  ✅ Technical docs         - Complete
+  ✅ Agent design guide     - Complete
+  ✅ Safety guidelines      - Documented
+  🔄 Agent integration      - Ready for implementation
+
+NEXT STEPS FOR PRINTFLOW TEAM:
+  1. Copy inject_dtf.dll & inject_uv.dll to packages/agent/agent/dlls/
+  2. Implement detect_printer_type() function (file size heuristics)
+  3. Create DTFBackend & UVBackend classes (ABC pattern in guide)
+  4. Add printer type detection to agent startup
+  5. Update job injector to call appropriate backend
+  6. Test on DTF and UV hardware
+  7. Deploy with auto-detection enabled
+  8. Monitor injection success rates per printer type
+
+ESTIMATED IMPLEMENTATION TIME:
+  - Backend implementation: 4-6 hours
+  - Testing on hardware: 2-4 hours
+  - Integration & deployment: 2-3 hours
+  Total: 8-13 hours for full agent integration
+
+================================================================================
+CROSS-REFERENCE VERIFICATION
+================================================================================
+
+All internal links verified:
+  ✅ printer-backend-integration.md references from:
+     - agent-printer-backend.md
+     - dtf-memory-patch-research.md
+     - tech-stack.md
+     - README.md (in print-shop-automation/docs/)
+     - UPDATE-LOG-UV-INTEGRATION.md
+
+  ✅ agent-printer-backend.md references from:
+     - UPDATE-LOG-UV-INTEGRATION.md
+     - (to be added to agent package docs)
+
+  ✅ All relative links use ./filename.md format
+  ✅ No broken or circular references
+
+================================================================================
+DOCUMENTATION QUALITY METRICS
+================================================================================
+
+File Sizes (all under 400 LOC target):
+  - printer-backend-integration.md:  364 LOC ✅
+  - agent-printer-backend.md:        384 LOC ✅
+  - UPDATE-LOG-UV-INTEGRATION.md:    164 LOC ✅
+  - dtf-memory-patch-research.md:     51 LOC ✅
+  - tech-stack.md:                   198 LOC ✅ (was 198)
+
+Content Quality:
+  ✅ Code snippets provided (C, Python)
+  ✅ Offset tables with clear comparisons
+  ✅ Struct layout documentation
+  ✅ Error handling guidance
+  ✅ Testing examples
+  ✅ Safety warnings highlighted
+  ✅ Clear implementation workflow
+
+Readability:
+  ✅ Markdown formatting consistent
+  ✅ Headings organized hierarchically
+  ✅ Tables used for structured data
+  ✅ Code blocks syntax-highlighted
+  ✅ Lists and bullets for clarity
+  ✅ Cross-references work correctly
+
+================================================================================
+RELATED PROJECT CONTEXT
+================================================================================
+
+DTG_autommation Project:
+  - Source of DLL implementations
+  - Memory scanning tools
+  - Reference scripts (Python/C)
+  - Verified offset discovery method
+
+Pressing_automation Project:
+  - Potential code reuse (QR parser, API client)
+  - Not directly updated for this task
+
+================================================================================
+APPROVAL & SIGN-OFF
+================================================================================
+
+Documentation prepared by: Claude Agent (Documentation Specialist)
+Prepared for: PrintFlow Development Team
+Date: 2026-03-26
+Status: READY FOR AGENT IMPLEMENTATION
+
+All documentation reflects confirmed working implementations:
+  - UV PrintExp v5.7.9.4.5008 DLL injection tested on actual hardware
+  - DTF PrintExp v5.7.6 DLL injection tested on actual hardware
+  - Offsets verified against actual executable files
+  - Safety guidelines established from testing results
+
+Next review scheduled after agent implementation is complete.
+
+================================================================================

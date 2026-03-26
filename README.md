@@ -1,6 +1,6 @@
 # PrintFlow
 
-Print shop automation — bridges PodFactory (order management) with DTG/DTF/UV printers via PrintExp. Supports auto-detection and DLL injection for seamless multi-printer workflows.
+Print shop automation — bridges PodFactory (order management) with DTG/DTF/UV printers via PrintExp. Supports 4 PrintExp builds (DTG v5.7.7 x86, DTF v5.7.6 & v5.8.2 x64, UV v5.7.9 x64) with auto-detection, DLL injection, and print history analytics.
 
 ## Architecture
 
@@ -62,12 +62,18 @@ cp agent.toml.example agent.toml  # Agent config (printer type, PrintExp path, p
 
 See `agent.toml.example` for all options. Key settings:
 
-- `printer.type` — `auto` (detects DTG/DTF/UV), `dtg`, `dtf`, or `uv`
+- `printer.type` — `auto` (detects DTG/DTF/UV), `dtg`, `dtf`, `dtf-v5.8.2`, or `uv`
 - `printexp.exe_path` — Path to PrintExp.exe
 - `printexp.tcp_port` — Raw print port (default: 9100)
 - `network.port` — Agent HTTP API port (default: 8080)
 
-Agent auto-detects printer type and uses appropriate memory injection backend. See [docs/printer-backend-integration.md](docs/printer-backend-integration.md) for technical details.
+Agent auto-detects printer type and uses appropriate integration backend:
+- **DTG v5.7.7** (x86) — TCP 9100 + WriteProcessMemory
+- **DTF v5.7.6** (x64) — DLL injection (vtable[7])
+- **DTF v5.8.2** (x64) — DLL injection (offsets TBD)
+- **UV v5.7.9** (x64) — DLL injection (vtable[9]) + DebugParam.ini settings
+
+See [docs/printer-support-matrix.md](docs/printer-support-matrix.md) for feature comparison and [docs/printer-backend-integration.md](docs/printer-backend-integration.md) for technical integration details.
 
 ## Running
 
