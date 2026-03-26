@@ -1,6 +1,6 @@
 # PrintFlow
 
-Print shop automation — bridges PodFactory (order management) with DTG/DTF/UV printers via PrintExp.
+Print shop automation — bridges PodFactory (order management) with DTG/DTF/UV printers via PrintExp. Supports auto-detection and DLL injection for seamless multi-printer workflows.
 
 ## Architecture
 
@@ -62,10 +62,12 @@ cp agent.toml.example agent.toml  # Agent config (printer type, PrintExp path, p
 
 See `agent.toml.example` for all options. Key settings:
 
-- `printer.type` — `auto`, `dtg`, `dtf`, or `uv`
+- `printer.type` — `auto` (detects DTG/DTF/UV), `dtg`, `dtf`, or `uv`
 - `printexp.exe_path` — Path to PrintExp.exe
 - `printexp.tcp_port` — Raw print port (default: 9100)
 - `network.port` — Agent HTTP API port (default: 8080)
+
+Agent auto-detects printer type and uses appropriate memory injection backend. See [docs/printer-backend-integration.md](docs/printer-backend-integration.md) for technical details.
 
 ## Running
 

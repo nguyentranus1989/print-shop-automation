@@ -72,12 +72,15 @@ No third-party socket libraries needed. Python stdlib `socket` is sufficient for
 | API | Method | Usage |
 |---|---|---|
 | `PostMessageW` | **ctypes** | Send WM_COMMAND to PrintExp (print, pause, cancel, axis movement). |
-| `WriteProcessMemory` | **ctypes** | Patch DeviceManager.dll filename string at offset 0x016CDB (job name injection). |
+| `WriteProcessMemory` | **ctypes** | Memory patching for filename injection (legacy DTG approach). |
 | `EnumWindows` / `EnumChildWindows` | **ctypes** | Find PrintExp HWND (changes each launch). |
 | `OpenProcess` | **ctypes** | Get process handle with `PROCESS_VM_WRITE \| PROCESS_VM_OPERATION`. |
 | `CreateToolhelp32Snapshot` | **ctypes** | Find PrintExp PID and DLL base addresses. |
+| **DLL Injection** | **ctypes** | Modern approach for DTF/UV — inject compiled DLL into PrintExp to access internal vtables and CTaskManager. |
 
 **Why ctypes over pywin32:** Zero install dependency, ships with Python, sufficient for the handful of Win32 calls needed. No COM automation required.
+
+See [printer-backend-integration.md](./printer-backend-integration.md) for DTF/UV DLL injection details.
 
 ## 7. HTTP Client
 

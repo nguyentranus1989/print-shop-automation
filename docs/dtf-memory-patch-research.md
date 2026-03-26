@@ -1,5 +1,7 @@
 # DTF Memory Patch Research
 
+**Status:** SOLVED via DLL injection (2026-03-26). See [printer-backend-integration.md](./printer-backend-integration.md) for current integration guide.
+
 ## Problem
 DTF PrintExp (64-bit) doesn't show preview BMP or correct filename when files are injected via TCP 9100. Shows `~section0.prn` with "No PreView".
 
@@ -47,4 +49,8 @@ PrintExp generates BMP preview in the SAME folder as the PRN file.
 ## Testing Status
 - DTG memory patch: CONFIRMED working (WriteProcessMemory succeeded)
 - DTG TCP 9100: Connection reset (no hardware on dev PC)
-- DTF memory patch: NOT YET TESTED (needs PrintExp_X64 + NWReceive running)
+- DTF memory patch: CONFIRMED working via DLL injection (2026-03-26)
+- UV memory patch: CONFIRMED working via DLL injection (2026-03-26)
+
+## See Also
+- [printer-backend-integration.md](./printer-backend-integration.md) — Full integration guide for DTF & UV backends with offset tables, struct layouts, and injection workflow
