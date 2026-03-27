@@ -34,6 +34,22 @@ def _find_dll_dir() -> str:
     return os.path.join(os.getcwd(), "dll")
 
 
+def _cleanup_old_inject_dlls(dll_dir: str, max_age_seconds: int = 60) -> None:
+    """Remove stale inject_*.dll files left over from previous runs."""
+    now = time.time()
+    try:
+        for name in os.listdir(dll_dir):
+            if name.startswith("inject_") and name.endswith(".dll"):
+                path = os.path.join(dll_dir, name)
+                try:
+                    if now - os.path.getmtime(path) > max_age_seconds:
+                        os.remove(path)
+                except OSError:
+                    pass  # file in use or already gone
+    except OSError:
+        pass
+
+
 class DTFBackend:
     """DTF/UV printer backend using DLL injection.
 
@@ -50,6 +66,8 @@ class DTFBackend:
         self._printexp_connected = False
         self._wm = WMCommandController(buttons=button_map or DTF_BUTTONS)
         self._pipe = NamedPipeClient()
+        # Clean up stale inject DLLs from previous runs on startup
+        _cleanup_old_inject_dlls(self.dll_dir)
 
     def _find_pid(self) -> int | None:
         """Find PrintExp_X64.exe PID."""

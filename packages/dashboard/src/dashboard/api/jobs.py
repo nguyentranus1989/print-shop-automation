@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 from pathlib import Path
 from typing import Any, Optional
 
@@ -93,16 +94,18 @@ def list_jobs(
                 "cancelled": "badge-mut",
             }.get(j["status"], "")
 
-            fname = j["prn_path"].replace("\\", "/").split("/")[-1] if j["prn_path"] else "—"
-            notes = j["notes"] or "—"
-            order = j["order_id"] or "—"
-            ptype = (j["printer_type"] or "—").upper()
-            status_label = (j["status"] or "—").capitalize()
+            raw_path = j["prn_path"] or ""
+            fname = html.escape(raw_path.replace("\\", "/").split("/")[-1]) if raw_path else "—"
+            path_title = html.escape(raw_path)
+            notes = html.escape(j["notes"]) if j["notes"] else "—"
+            order = html.escape(j["order_id"]) if j["order_id"] else "—"
+            ptype = html.escape((j["printer_type"] or "—").upper())
+            status_label = html.escape((j["status"] or "—").capitalize())
 
             rows += (
                 f'<tr>'
                 f'<td>{i}</td>'
-                f'<td title="{j["prn_path"]}">{fname}</td>'
+                f'<td title="{path_title}">{fname}</td>'
                 f'<td>{order}</td>'
                 f'<td>{notes}</td>'
                 f'<td><span class="badge {status_cls}">{status_label}</span></td>'
