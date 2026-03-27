@@ -53,7 +53,9 @@ class MockBackend:
     # PrinterBackend protocol implementation
     # ------------------------------------------------------------------
 
-    async def inject_job(self, prn_path: str, job_name: str) -> bool:
+    async def inject_job(
+        self, prn_path: str, job_name: str, workstation: int | None = None
+    ) -> bool:
         """Simulate a 2-second injection with configurable failure rate."""
         self._printing = True
         self._current_job = job_name
