@@ -50,29 +50,51 @@ def _cleanup_old_inject_dlls(dll_dir: str, max_age_seconds: int = 60) -> None:
         pass
 
 
+# Bridge DLL name per build variant
+_BRIDGE_DLL_MAP = {
+    "dtf": "printflow-bridge.dll",        # DTF v5.7.6 (vtable[7], app+0x176B98)
+    "uv": "printflow-bridge-uv.dll",      # UV v5.7.9 (vtable[9], dev+0x1D2F10)
+    "dtf82": "printflow-bridge-dtf82.dll", # DTF v5.8.2 Unicode (clone+load, dev+0x31B020)
+}
+
+
 class DTFBackend:
     """DTF/UV printer backend using DLL injection.
 
-    Works for DTF and UV builds — pass button_map to select control IDs.
+    Works for DTF, UV, and DTF v5.8.2 builds — pass build_variant to select
+    the correct injection DLL and button_map for control IDs.
+
+    build_variant: "dtf" (default), "uv", or "dtf82"
     """
 
     def __init__(self, dll_dir: str | None = None, printexp_exe: str | None = None,
-                 button_map: dict[str, int] | None = None):
+                 button_map: dict[str, int] | None = None,
+                 build_variant: str = "dtf"):
         self.dll_dir = dll_dir or _find_dll_dir()
-        self.inject_dll = os.path.join(self.dll_dir, "printflow-bridge.dll")
+        self.build_variant = build_variant
+        dll_name = _BRIDGE_DLL_MAP.get(build_variant, "printflow-bridge.dll")
+        self.inject_dll = os.path.join(self.dll_dir, dll_name)
         self.config_path = os.path.join(self.dll_dir, "inject_config.txt")
         self.log_path = os.path.join(self.dll_dir, "inject_log.txt")
         self.printexp_exe = printexp_exe
         self._printexp_connected = False
         self._wm = WMCommandController(buttons=button_map or DTF_BUTTONS)
         self._pipe = NamedPipeClient()
+        logger.info("DTFBackend init: variant=%s dll=%s", build_variant, dll_name)
         # Clean up stale inject DLLs from previous runs on startup
         _cleanup_old_inject_dlls(self.dll_dir)
 
     def _find_pid(self) -> int | None:
-        """Find PrintExp_X64.exe PID."""
+        """Find PrintExp process PID (X64 or v5.8.2 standard name)."""
         try:
             from .win32_process_helpers import find_process_pid
+            # DTF v5.8.2 uses "PrintExp.exe" (not _X64), but is still x64
+            if self.build_variant == "dtf82":
+                pid = find_process_pid("PrintExp")
+                # Avoid matching DTG's 32-bit PrintExp by checking module list
+                if pid is None:
+                    pid = find_process_pid("PrintExp_X64")
+                return pid
             return find_process_pid("PrintExp_X64")
         except Exception:
             return None

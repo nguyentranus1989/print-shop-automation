@@ -44,7 +44,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--printer-type",
-        choices=["auto", "dtg", "dtf", "uv"],
+        choices=["auto", "dtg", "dtf", "dtf82", "uv"],
         default="auto",
         help="Override printer type detection (default: auto)",
     )
@@ -106,14 +106,24 @@ def main() -> None:
             print("[agent] WARNING: Real backends require Windows. Falling back to MockBackend.", flush=True)
             backend = MockBackend(printer_type=printer_type)
         else:
+            # Map CLI --printer-type to PrinterType enum + build variant
+            # "dtf82" is a build variant of DTF, not a separate PrinterType
+            build_variant = "dtf"
+            if args.printer_type == "dtf82":
+                printer_type = PrinterType.DTF
+                build_variant = "dtf82"
             config.printer_type = printer_type.value
+
             if printer_type == PrinterType.DTF:
-                backend = DTFBackend(printexp_exe=config.printexp_path)
-                print(f"[agent] Real mode — DTF (DLL injection)", flush=True)
+                backend = DTFBackend(printexp_exe=config.printexp_path,
+                                     build_variant=build_variant)
+                label = "DTF v5.8.2 Unicode" if build_variant == "dtf82" else "DTF"
+                print(f"[agent] Real mode — {label} (DLL injection)", flush=True)
             elif printer_type == PrinterType.UV:
                 from common.protocols.wm_command import UV_BUTTONS
                 backend = DTFBackend(printexp_exe=config.printexp_path,
-                                     button_map=UV_BUTTONS)
+                                     button_map=UV_BUTTONS,
+                                     build_variant="uv")
                 # Wire UV print mode service (direction + mirror + ink presets)
                 if config.printexp_path:
                     import os
