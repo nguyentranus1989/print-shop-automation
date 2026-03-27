@@ -27,6 +27,7 @@ from agent.printer.win32_process_helpers import (
     write_process_memory,
 )
 from agent.printer.dtg_ws_log_parser import parse_ws_state
+from agent.printer.dtg_ws_controller import DTGWorkstationController
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ class DTGBackend:
     def __init__(self, config: AgentConfig) -> None:
         self._config = config
         self._wm = WMCommandController(buttons=DTG_BUTTONS)
+        self._ws_ctrl = DTGWorkstationController()
 
     # ------------------------------------------------------------------
     # PrinterBackend protocol implementation
@@ -76,6 +78,11 @@ class DTGBackend:
             bytes_sent = await asyncio.get_event_loop().run_in_executor(
                 None, self._send_prn, prn_path
             )
+
+            # Restore both WS after job injection to avoid permanent lock
+            if workstation is not None:
+                await self._restore_both_ws()
+
             return bytes_sent > 0
         except Exception:
             return False
@@ -104,15 +111,14 @@ class DTGBackend:
         )
 
     # ------------------------------------------------------------------
-    # Workstation selection (placeholder — fill in after Phase 1 research)
+    # Workstation selection — patches CJobProcess+0x90 WS bitmask
     # ------------------------------------------------------------------
 
     async def _select_workstation(self, ws: int) -> bool:
-        """Set target workstation before job injection.
+        """Set target workstation by patching CJobProcess WS bitmask.
 
-        Currently a placeholder — logs intent but does not yet control PrintExp.
-        After Phase 1 research determines the mechanism (WM_COMMAND, memory patch,
-        or UJOBMF blob), this method will be implemented.
+        Writes to CJobProcess+0x90 in PrintExp.exe process memory.
+        Bitmask: 1=WS:0 only, 2=WS:1 only, 3=both (restore after job).
 
         Args:
             ws: Workstation index (0 or 1).
@@ -121,12 +127,29 @@ class DTGBackend:
             logger.error("Invalid workstation index: %d (must be 0 or 1)", ws)
             return False
 
-        # TODO: Phase 1 will determine the actual mechanism:
-        # Path A (WM_COMMAND):  self._wm.send_named(f"select_ws{ws}")
-        # Path B (Memory patch): WriteProcessMemory to CJobProcess WS index
-        # Path C (UJOBMF blob): set WS field when writing .jl entry
-        logger.info("WS:%d selection requested (placeholder — awaiting Phase 1 mechanism)", ws)
-        return True
+        if sys.platform != "win32":
+            logger.info("WS selection skipped (non-Windows)")
+            return False
+
+        pid = find_process_pid("printexp")
+        if pid is None:
+            logger.warning("PrintExp not running — cannot select WS")
+            return False
+
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._ws_ctrl.select_workstation, pid, ws
+        )
+
+    async def _restore_both_ws(self) -> None:
+        """Restore normal dual-WS operation after a targeted job injection."""
+        if sys.platform != "win32":
+            return
+        pid = find_process_pid("printexp")
+        if pid is None:
+            return
+        await asyncio.get_event_loop().run_in_executor(
+            None, self._ws_ctrl.restore_both, pid
+        )
 
     # ------------------------------------------------------------------
     # Internal sync helpers (called via run_in_executor)
