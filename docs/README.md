@@ -8,6 +8,8 @@ Navigation guide for print-shop-automation project documentation.
 
 | Document | Purpose | Last Updated |
 |----------|---------|--------------|
+| [system-architecture.md](./system-architecture.md) | **Complete system design** — components, data flow, build variants, MULTIWS WS assignment | 2026-03-26 ✨ |
+| [project-roadmap.md](./project-roadmap.md) | Development phases, milestones, progress tracking | 2026-03-26 ✨ |
 | [tech-stack.md](./tech-stack.md) | Technology choices, rationale, dependency summary | 2026-03-26 |
 | [design-guidelines.md](./design-guidelines.md) | Dashboard UI/UX design system, dark theme, component library | 2026-03-22 |
 
@@ -37,11 +39,12 @@ Navigation guide for print-shop-automation project documentation.
 
 ---
 
-## Change Log
+## Change Log & History
 
-| Document | Purpose |
-|----------|---------|
-| [UPDATE-LOG-UV-INTEGRATION.md](./UPDATE-LOG-UV-INTEGRATION.md) | Summary of UV PrintExp integration documentation (2026-03-26) |
+| Document | Purpose | Last Updated |
+|----------|---------|--------------|
+| [project-changelog.md](./project-changelog.md) | **Complete changelog** — all features, fixes, tests across phases | 2026-03-26 ✨ |
+| [UPDATE-LOG-UV-INTEGRATION.md](./UPDATE-LOG-UV-INTEGRATION.md) | Summary of UV PrintExp integration documentation (legacy) | 2026-03-26 |
 
 ---
 
@@ -98,7 +101,7 @@ All documentation files kept under 400 LOC for optimal readability and context m
 - `tech-stack.md` — 198 LOC
 - Other files — 50–200 LOC each
 
-Total documentation: ~2,300 lines across 11 files.
+Total documentation: ~3,200 lines across 14 files.
 
 ---
 
