@@ -70,6 +70,7 @@ class JobRequest(BaseModel):
     order_id: str
     prn_path: str
     job_name: str = "print-job"
+    workstation: int | None = None  # 0=WS:0, 1=WS:1, None=auto (DTG MULTIWS)
 
 
 class CommandRequest(BaseModel):
@@ -112,10 +113,22 @@ async def inject_job(req: JobRequest) -> dict[str, Any]:
     Returns success flag and bytes sent.
     """
     backend = _get_backend()
-    ok = await backend.inject_job(req.prn_path, req.job_name)
+    ok = await backend.inject_job(req.prn_path, req.job_name, workstation=req.workstation)
     if not ok:
         raise HTTPException(status_code=500, detail="Job injection failed")
     return {"success": True, "job_id": req.job_id}
+
+
+@app.get("/ws-status")
+async def get_ws_status() -> dict[str, Any]:
+    """Return MULTIWS workstation busy state (DTG dual-platen only)."""
+    backend = _get_backend()
+    status = await backend.get_status()
+    return {
+        "active_ws": status.active_ws,
+        "ws0_busy": status.ws0_busy,
+        "ws1_busy": status.ws1_busy,
+    }
 
 
 @app.get("/files")
@@ -322,6 +335,9 @@ async def websocket_status(websocket: WebSocket) -> None:
                     "position_y": status.position_y,
                     "ink_levels": status.ink_levels,
                     "current_job": status.current_job,
+                    "active_ws": status.active_ws,
+                    "ws0_busy": status.ws0_busy,
+                    "ws1_busy": status.ws1_busy,
                 }
             )
             await _manager.broadcast(payload)

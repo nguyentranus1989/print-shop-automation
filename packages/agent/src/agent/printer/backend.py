@@ -15,12 +15,16 @@ from common.models.printer import PrinterStatus
 class PrinterBackend(Protocol):
     """Interface every concrete printer backend must satisfy."""
 
-    async def inject_job(self, prn_path: str, job_name: str) -> bool:
+    async def inject_job(
+        self, prn_path: str, job_name: str, workstation: int | None = None
+    ) -> bool:
         """Send a .prn file to the printer and trigger print.
 
         Args:
             prn_path: Absolute path to the .prn file.
             job_name: Human-readable job identifier (patched into memory).
+            workstation: Target WS index (0 or 1) for MULTIWS DTG printers.
+                         None = let PrintExp auto-allocate.
 
         Returns:
             True if injection succeeded, False on error.

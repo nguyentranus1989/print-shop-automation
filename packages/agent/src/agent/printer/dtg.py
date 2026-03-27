@@ -1,17 +1,20 @@
 """DTGBackend — real printer integration via TCP 9100 + WriteProcessMemory.
 
 Flow:
-  1. Patch filename string in DeviceManager.dll at offset 0x016CDB
+  1. (Optional) Select target workstation for MULTIWS dual-platen.
+  2. Patch filename string in DeviceManager.dll at offset 0x016CDB
      so PrintExp logs the correct job name.
-  2. Send .prn file via TCP 9100 to 127.0.0.1:9100.
-  3. Poll WM_COMMAND / log to detect print completion.
+  3. Send .prn file via TCP 9100 to 127.0.0.1:9100.
+  4. Poll WM_COMMAND / log to detect print completion.
 
 Win32 helpers delegated to win32_process_helpers.py to stay under 200 lines.
+WS log parsing delegated to dtg_ws_log_parser.py.
 """
 
 from __future__ import annotations
 
 import asyncio
+import logging
 import sys
 
 from common.config import AgentConfig
@@ -23,6 +26,9 @@ from agent.printer.win32_process_helpers import (
     get_module_base_address,
     write_process_memory,
 )
+from agent.printer.dtg_ws_log_parser import parse_ws_state
+
+logger = logging.getLogger(__name__)
 
 # DeviceManager.dll memory offset for the rip.prn filename string
 _FILENAME_OFFSET = 0x016CDB
@@ -45,12 +51,20 @@ class DTGBackend:
     # PrinterBackend protocol implementation
     # ------------------------------------------------------------------
 
-    async def inject_job(self, prn_path: str, job_name: str) -> bool:
-        """Patch memory, then stream the PRN file via TCP 9100.
+    async def inject_job(
+        self, prn_path: str, job_name: str, workstation: int | None = None
+    ) -> bool:
+        """Select WS (if specified), patch memory, then stream PRN via TCP 9100.
 
         Returns True on success.
         """
         try:
+            # Select target workstation before sending job
+            if workstation is not None:
+                ws_ok = await self._select_workstation(workstation)
+                if not ws_ok:
+                    logger.warning("WS selection failed for WS:%d, proceeding with auto", workstation)
+
             # Memory patch runs in executor to avoid blocking event loop
             patched = await asyncio.get_event_loop().run_in_executor(
                 None, self._patch_job_name, job_name
@@ -67,14 +81,20 @@ class DTGBackend:
             return False
 
     async def get_status(self) -> PrinterStatus:
-        """Return a basic status snapshot (connected = PrintExp window found)."""
+        """Return status snapshot including WS state from PrintExp logs."""
         hwnd = await asyncio.get_event_loop().run_in_executor(
             None, self._wm.find_printexp_window
+        )
+        ws_state = await asyncio.get_event_loop().run_in_executor(
+            None, self._read_ws_state
         )
         return PrinterStatus(
             type=PrinterType.DTG,
             connected=hwnd is not None,
-            printing=False,  # TODO: parse log for live printing state
+            printing=ws_state.get("printing", False),
+            active_ws=ws_state.get("active_ws"),
+            ws0_busy=ws_state.get("ws0_busy", False),
+            ws1_busy=ws_state.get("ws1_busy", False),
         )
 
     async def send_command(self, command: str) -> bool:
@@ -82,6 +102,31 @@ class DTGBackend:
         return await asyncio.get_event_loop().run_in_executor(
             None, self._wm.send_named, command
         )
+
+    # ------------------------------------------------------------------
+    # Workstation selection (placeholder — fill in after Phase 1 research)
+    # ------------------------------------------------------------------
+
+    async def _select_workstation(self, ws: int) -> bool:
+        """Set target workstation before job injection.
+
+        Currently a placeholder — logs intent but does not yet control PrintExp.
+        After Phase 1 research determines the mechanism (WM_COMMAND, memory patch,
+        or UJOBMF blob), this method will be implemented.
+
+        Args:
+            ws: Workstation index (0 or 1).
+        """
+        if ws not in (0, 1):
+            logger.error("Invalid workstation index: %d (must be 0 or 1)", ws)
+            return False
+
+        # TODO: Phase 1 will determine the actual mechanism:
+        # Path A (WM_COMMAND):  self._wm.send_named(f"select_ws{ws}")
+        # Path B (Memory patch): WriteProcessMemory to CJobProcess WS index
+        # Path C (UJOBMF blob): set WS field when writing .jl entry
+        logger.info("WS:%d selection requested (placeholder — awaiting Phase 1 mechanism)", ws)
+        return True
 
     # ------------------------------------------------------------------
     # Internal sync helpers (called via run_in_executor)
@@ -108,3 +153,10 @@ class DTGBackend:
         """Open TCP 9100 connection, stream file, close.  Returns bytes sent."""
         with TCP9100Client(port=self._config.tcp_port) as client:
             return client.send_file(prn_path)
+
+    def _read_ws_state(self) -> dict:
+        """Parse PrintExp log for workstation state (sync, called in executor)."""
+        printexp_path = self._config.printexp_path
+        if not printexp_path:
+            return {}
+        return parse_ws_state(printexp_path)

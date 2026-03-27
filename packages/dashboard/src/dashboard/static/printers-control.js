@@ -3,6 +3,7 @@
 // activePrinter is the numeric DB id; activePrinterType is 'dtg'/'dtf'/'uv'
 var activePrinter = null;
 var activePrinterType = null;
+var selectedWorkstation = null;  // null=auto, 0=WS:0, 1=WS:1 (DTG MULTIWS)
 
 /* Called by HTMX when /api/printers/tabs partial is loaded */
 document.addEventListener('htmx:afterSwap', function(evt) {
@@ -35,6 +36,16 @@ function selectPrinterTab(id, ptype, btn) {
   } else {
     pmSection.style.display = 'none';
   }
+  /* Show/hide workstation section for DTG MULTIWS */
+  var wsSection = document.getElementById('ws-section');
+  if (ptype === 'dtg') {
+    wsSection.style.display = '';
+    selectedWorkstation = null;
+    document.getElementById('ws-select').value = '';
+    loadWSStatus();
+  } else {
+    wsSection.style.display = 'none';
+  }
 }
 
 function sendMove(axis, dir) {
@@ -49,10 +60,15 @@ function sendMove(axis, dir) {
 
 function sendControl(cmd, extra) {
   if (!activePrinter) return;
+  var payload = Object.assign({command: cmd}, extra || {});
+  /* Include workstation for DTG MULTIWS print commands */
+  if (activePrinterType === 'dtg' && selectedWorkstation !== null) {
+    payload.workstation = selectedWorkstation;
+  }
   fetch('/api/printers/' + activePrinter + '/control', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(Object.assign({command: cmd}, extra || {}))
+    body: JSON.stringify(payload)
   }).catch(function() {});
 }
 
@@ -93,7 +109,37 @@ setInterval(function() {
       }
     })
     .catch(function() {});
+  /* Poll WS status for DTG MULTIWS printers */
+  if (activePrinterType === 'dtg') loadWSStatus();
 }, 2000);
+
+/* ── Workstation (DTG MULTIWS) ─────────────────────────── */
+
+function onWSSelect(val) {
+  selectedWorkstation = val === '' ? null : parseInt(val);
+  var txt = document.getElementById('ws-status-text');
+  if (txt) txt.textContent = selectedWorkstation !== null ? 'Target: WS:' + selectedWorkstation : '';
+}
+
+function loadWSStatus() {
+  if (!activePrinter || activePrinterType !== 'dtg') return;
+  fetch('/api/printers/' + activePrinter + '/ws-status')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      updateWSBadge('ws0', data.ws0_busy, data.active_ws === 0);
+      updateWSBadge('ws1', data.ws1_busy, data.active_ws === 1);
+    })
+    .catch(function() {});
+}
+
+function updateWSBadge(prefix, busy, active) {
+  var dot = document.getElementById(prefix + '-dot');
+  var state = document.getElementById(prefix + '-state');
+  if (dot) dot.className = 'ws-dot ' + (busy ? 'printing' : 'idle');
+  if (state) state.textContent = busy ? 'Printing' : 'Idle';
+  var badge = document.getElementById(prefix + '-badge');
+  if (badge) badge.classList.toggle('ws-active', active);
+}
 
 function formatPos(val, len) {
   var s = (val != null ? parseFloat(val).toFixed(1) : '0.0');

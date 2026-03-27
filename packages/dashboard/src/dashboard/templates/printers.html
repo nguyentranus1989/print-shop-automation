@@ -138,6 +138,32 @@
       <div id="print-mode-info" style="margin-top:6px;font-size:12px;color:var(--text-mut);"></div>
     </div>
 
+    <!-- Workstation — DTG MULTIWS only -->
+    <div id="ws-section" style="display:none;">
+      <div class="section-divider">Workstation</div>
+      <div class="ws-status-row" style="display:flex;gap:12px;margin-bottom:8px;">
+        <div class="ws-badge" id="ws0-badge">
+          <span class="ws-dot" id="ws0-dot"></span>
+          <span>WS:0 (Left)</span>
+          <span class="ws-state" id="ws0-state">&mdash;</span>
+        </div>
+        <div class="ws-badge" id="ws1-badge">
+          <span class="ws-dot" id="ws1-dot"></span>
+          <span>WS:1 (Right)</span>
+          <span class="ws-state" id="ws1-state">&mdash;</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="ws-select" class="form-select" style="flex:1;min-width:140px;"
+                onchange="onWSSelect(this.value)">
+          <option value="">Auto (alternate)</option>
+          <option value="0">WS:0 — Left platen</option>
+          <option value="1">WS:1 — Right platen</option>
+        </select>
+        <span id="ws-status-text" style="font-size:11px;color:var(--text-mut);"></span>
+      </div>
+    </div>
+
     <div class="section-divider">Maintenance</div>
     <div class="maintenance-row">
       <button class="btn-outline-gray" onclick="sendControl('clean')">

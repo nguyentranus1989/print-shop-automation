@@ -27,6 +27,10 @@ class PrinterStatus:
     # ink_levels: channel name → percentage (0–100)
     ink_levels: dict[str, float] = field(default_factory=dict)
     current_job: Optional[str] = None  # job id or None when idle
+    # MULTIWS workstation fields (DTG dual-platen only)
+    active_ws: Optional[int] = None  # 0=WS:0 (left), 1=WS:1 (right)
+    ws0_busy: bool = False
+    ws1_busy: bool = False
 
     def is_idle(self) -> bool:
         return self.connected and not self.printing and self.current_job is None

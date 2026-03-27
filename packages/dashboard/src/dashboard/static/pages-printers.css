@@ -182,3 +182,48 @@
 .action-grid .btn { min-height: 52px; }
 
 .maintenance-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ── Workstation badges (DTG MULTIWS) ──────────────────────────── */
+.ws-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text-sec);
+  transition: var(--transition);
+}
+
+.ws-badge.ws-active {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, var(--elevated));
+}
+
+.ws-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-mut);
+  transition: var(--transition);
+}
+
+.ws-dot.idle     { background: var(--success); }
+.ws-dot.printing { background: var(--warning); animation: ws-pulse 1.2s ease-in-out infinite; }
+.ws-dot.offline  { background: var(--text-mut); }
+
+.ws-state {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-mut);
+}
+
+@keyframes ws-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}

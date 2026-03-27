@@ -54,6 +54,7 @@ class PrinterUpdate(BaseModel):
 
 class ControlRequest(BaseModel):
     command: str
+    workstation: int | None = None  # DTG MULTIWS: 0=WS:0, 1=WS:1, None=auto
 
 
 class HeartbeatRequest(BaseModel):
@@ -65,6 +66,10 @@ class HeartbeatRequest(BaseModel):
     current_job: str | None = None
     position_x: float = 0.0
     position_y: float = 0.0
+    # MULTIWS workstation fields (DTG only)
+    active_ws: int | None = None
+    ws0_busy: bool = False
+    ws1_busy: bool = False
 
 
 # --- Helper -----------------------------------------------------------
@@ -326,11 +331,19 @@ async def control_printer(
     req: ControlRequest,
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """POST /api/printers/{id}/control — forward command to agent."""
+    """POST /api/printers/{id}/control — forward command to agent.
+
+    If workstation is specified (DTG MULTIWS), selects WS before command.
+    """
     manager = _get_manager()
     printer = db.query(Printer).filter(Printer.id == printer_id).first()
     if printer is None:
         raise HTTPException(status_code=404, detail="Printer not found")
+
+    # Select workstation before print command (DTG MULTIWS)
+    if req.workstation is not None and printer.printer_type == "dtg":
+        ws_cmd = f"select_ws{req.workstation}"
+        await manager.send_control(printer.agent_url, ws_cmd)
 
     ok = await manager.send_control(printer.agent_url, req.command)
     if not ok:
@@ -340,6 +353,35 @@ async def control_printer(
 
 
 router.add_api_route("/{printer_id}/control", control_printer, methods=["POST"])
+
+
+class WorkstationStatusResponse(BaseModel):
+    active_ws: int | None = None
+    ws0_busy: bool = False
+    ws1_busy: bool = False
+
+
+async def get_ws_status(
+    printer_id: int,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """GET /api/printers/{id}/ws-status — proxy WS status from DTG agent."""
+    import httpx
+
+    printer = db.query(Printer).filter(Printer.id == printer_id).first()
+    if printer is None:
+        raise HTTPException(status_code=404, detail="Printer not found")
+
+    try:
+        async with httpx.AsyncClient(verify=False, timeout=5.0) as client:
+            resp = await client.get(f"{printer.agent_url}/ws-status")
+            resp.raise_for_status()
+            return resp.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Agent unreachable: {e}")
+
+
+router.add_api_route("/{printer_id}/ws-status", get_ws_status, methods=["GET"])
 
 
 class PrintModeRequest(BaseModel):
@@ -497,6 +539,9 @@ async def heartbeat(
         current_job=req.current_job,
         position_x=req.position_x,
         position_y=req.position_y,
+        active_ws=req.active_ws,
+        ws0_busy=req.ws0_busy,
+        ws1_busy=req.ws1_busy,
     )
     entry = manager._entries.get(req.agent_url)
     if entry:
