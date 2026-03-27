@@ -3,7 +3,6 @@
 // activePrinter is the numeric DB id; activePrinterType is 'dtg'/'dtf'/'uv'
 var activePrinter = null;
 var activePrinterType = null;
-var stepSize = '1.0';
 
 /* Called by HTMX when /api/printers/tabs partial is loaded */
 document.addEventListener('htmx:afterSwap', function(evt) {
@@ -38,12 +37,6 @@ function selectPrinterTab(id, ptype, btn) {
   }
 }
 
-function setStep(val, btn) {
-  stepSize = val;
-  document.querySelectorAll('.step-btn').forEach(function(b) { b.classList.remove('active'); });
-  btn.classList.add('active');
-}
-
 function sendMove(axis, dir) {
   var moveMap = {
     'X+': 'move_right', 'X-': 'move_left',
@@ -63,29 +56,44 @@ function sendControl(cmd, extra) {
   }).catch(function() {});
 }
 
-/* pos-readout HTMX callback — reads from /api/printers/cards (JSON list) */
-function updatePosFromCards(evt) {
-  try {
-    var data = JSON.parse(evt.detail.xhr.responseText);
-    if (!Array.isArray(data)) return;
-    var p = data.find(function(d) { return d.id === activePrinter; });
-    if (!p) return;
-    var px = document.getElementById('pos-x');
-    var py = document.getElementById('pos-y');
-    if (px) px.textContent = formatPos(p.position_x, 5);
-    if (py) py.textContent = formatPos(p.position_y, 5);
+/* Poll printer status every 2s via JSON (not HTMX — needs explicit Accept header) */
+setInterval(function() {
+  if (!activePrinter) return;
+  fetch('/api/printers', { headers: { 'Accept': 'application/json' } })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!Array.isArray(data)) return;
+      var p = data.find(function(d) { return d.id === activePrinter; });
+      if (!p) return;
 
-    /* Update connection banner */
-    var banner = document.getElementById('conn-banner');
-    var label  = document.getElementById('conn-label');
-    if (banner && label) {
-      var connected = p.connected || false;
-      banner.className = 'conn-banner ' + (connected ? 'connected' : 'disconnected');
-      label.textContent = connected ? 'Connected \u2014 TCP 9100' : 'Disconnected';
-      lucide.createIcons();
-    }
-  } catch(e) {}
-}
+      var px = document.getElementById('pos-x');
+      var py = document.getElementById('pos-y');
+      if (px) px.textContent = formatPos(p.position_x, 5);
+      if (py) py.textContent = formatPos(p.position_y, 5);
+
+      /* Connection banner */
+      var banner = document.getElementById('conn-banner');
+      var label  = document.getElementById('conn-label');
+      if (banner && label) {
+        var connected = p.connected || false;
+        banner.className = 'conn-banner ' + (connected ? 'connected' : 'disconnected');
+        var protocol = (p.printer_type === 'dtg') ? 'TCP 9100' : 'DLL Injection';
+        label.textContent = connected ? 'Connected \u2014 ' + protocol : 'Disconnected';
+      }
+
+      /* Update printing status */
+      var badge = document.getElementById('active-printer-badge');
+      if (badge && p.printing) {
+        badge.className = 'badge badge-green';
+        badge.textContent = 'PRINTING';
+      } else if (badge) {
+        badge.className = 'badge badge-blue';
+        var labels = {dtg:'DTG', dtf:'DTF', uv:'UV'};
+        badge.textContent = labels[p.printer_type] || p.printer_type;
+      }
+    })
+    .catch(function() {});
+}, 2000);
 
 function formatPos(val, len) {
   var s = (val != null ? parseFloat(val).toFixed(1) : '0.0');

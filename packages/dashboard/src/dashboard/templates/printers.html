@@ -48,14 +48,16 @@
       <div class="dpad-btn dpad-empty"></div>
     </div>
 
-    <!-- Step size -->
+    <!-- Step size (sends step_minus/step_plus to PrintExp) -->
     <div class="step-selector">
-      <button class="step-btn"        onclick="setStep('0.1',this)">0.1</button>
-      <button class="step-btn active" onclick="setStep('1.0',this)">1.0</button>
-      <button class="step-btn"        onclick="setStep('5.0',this)">5.0</button>
-      <button class="step-btn"        onclick="setStep('10.0',this)">10.0</button>
+      <button class="step-btn" onclick="sendControl('step_minus')" title="Decrease step size">
+        <i data-lucide="minus" style="width:14px;height:14px;"></i>
+      </button>
+      <span style="font-size:12px;color:var(--text-mut);padding:0 8px;">Step</span>
+      <button class="step-btn" onclick="sendControl('step_plus')" title="Increase step size">
+        <i data-lucide="plus" style="width:14px;height:14px;"></i>
+      </button>
     </div>
-    <div style="text-align:center;font-size:11px;color:var(--text-mut);margin-top:4px;">Step size (mm)</div>
 
     <div class="home-btns">
       <button class="btn btn-ghost" onclick="sendControl('home_x')">
@@ -83,12 +85,7 @@
       <div class="card-title">Status &amp; Actions</div>
     </div>
 
-    <div class="pos-readout"
-         id="pos-readout"
-         hx-get="/api/printers/cards"
-         hx-trigger="every 2s"
-         hx-swap="none"
-         hx-on::after-request="updatePosFromCards(event)">
+    <div class="pos-readout" id="pos-readout">
       <div class="pos-axis">
         <span class="axis-label">X</span>
         <span class="axis-value mono" id="pos-x">000.0</span>

@@ -24,11 +24,13 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/static/printers-control.js"></script>
 <script>
-function loadReport(printerId, btn) {
-  document.querySelectorAll('.range-btn').forEach(function(b) { b.classList.remove('active'); });
-  if (btn) btn.classList.add('active');
-  htmx.ajax('GET', '/api/reports/page?printer_id=' + printerId, {target: '#report-content', swap: 'innerHTML'});
-}
+/* Override selectPrinterTab to also load report content */
+var _origSelectTab = selectPrinterTab;
+selectPrinterTab = function(id, ptype, btn) {
+  _origSelectTab(id, ptype, btn);
+  htmx.ajax('GET', '/api/reports/page?printer_id=' + id, {target: '#report-content', swap: 'innerHTML'});
+};
 </script>
 {% endblock %}
