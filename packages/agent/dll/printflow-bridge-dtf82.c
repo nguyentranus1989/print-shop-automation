@@ -15,6 +15,10 @@
 #include <windows.h>
 #include <stdio.h>
 
+#ifndef CP_ACP
+#define CP_ACP 0
+#endif
+
 #define RVA_DEVICE_OBJECT 0x31B020
 #define TM_VT_RVA        0x1F538
 
