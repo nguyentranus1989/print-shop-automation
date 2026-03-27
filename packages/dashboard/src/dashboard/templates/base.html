@@ -158,6 +158,23 @@
   document.addEventListener('htmx:afterSwap', reinitIcons);
   document.addEventListener('htmx:afterSettle', reinitIcons);
 
+  /* Smooth page transitions — intercept nav link clicks */
+  document.addEventListener('click', function(e) {
+    var link = e.target.closest('.nav-link, .bottom-nav-item');
+    if (!link || !link.href || link.classList.contains('active')) return;
+    /* Same-origin nav links only */
+    if (new URL(link.href).origin !== location.origin) return;
+    e.preventDefault();
+    var page = document.querySelector('.page-content');
+    if (!page) { location.href = link.href; return; }
+    page.classList.add('page-exit');
+    page.addEventListener('animationend', function() {
+      location.href = link.href;
+    }, {once: true});
+    /* Fallback if animation doesn't fire */
+    setTimeout(function() { location.href = link.href; }, 200);
+  });
+
   /* statusClass helper — used by page-level scripts */
   function statusClass(status) {
     var s = (status || '').toLowerCase();
